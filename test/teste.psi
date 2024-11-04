@@ -1,0 +1,142 @@
+// Conta quantos elementos pares tem num vetor.
+
+fn conta_pares(vetor: [i32]) {
+    let count: i32 = 0;
+
+    for i: i32 in 0..#vetor {
+        if vetor[i] % 2 == 0 {
+            count += 1;
+        }
+    }
+
+    return count;
+}
+
+fn main() {
+    let vet: [i32] = [1, 2, 3, 4, 5];
+    let resp: i32 = conta_pares(vet);
+    debug resp;
+}
+
+// fn
+// id, conta_pares
+// (
+// id, vetor
+// :
+// [
+// id, i32
+// ]
+// )
+// {
+// let
+// id, count
+// :
+// id, i32
+// =
+// int, 0
+// ;
+// for
+// id, i
+// :
+// id, i32
+// in
+// int, 0
+// ..
+// #
+// id, vetor
+// {
+// if
+// id, vetor
+// [
+// id, i
+// ]
+// %
+// int, 2
+// ==
+// int, 0
+// {
+// id, count
+// +=
+// int, 1
+// ;
+// }
+// }
+// return
+// id, count
+// ;
+// }
+
+// fn
+// id, main
+// (
+// )
+// {
+// let
+// id, vet
+// :
+// [
+// id, i32
+// ]
+// =
+// [
+// int, 1
+// ,
+// int, 2
+// ,
+// int, 3
+// ,
+// int, 4
+// ,
+// int, 5
+// ]
+// ;
+// let
+// id, resp
+// :
+// id, i32
+// =
+// id, conta_pares
+// (
+// id, vet
+// )
+// ;
+// debug
+// id, resp
+// ;
+// }
+// EOF
+
+
+
+// inverte umna lista de numeros utilizando a propria lista 
+
+fn inverte_lista(lista: [i32]) {
+    let start: i32 = 0;
+    let end: i32 = #lista - 1;
+    let aux: i32;
+
+    for i: i32 in 0..(#vetor / 2) {
+        aux = vetor[start];
+        vetor[start] = vetor[end];
+        vetor[end] = aux;
+        start++;
+        end--;
+    }
+
+    return vetor;
+}
+
+
+// Fatorial
+
+fn fatorial(n: i32) -> i64 {
+
+    if n == 0 {
+        return 1;
+    }
+    else {
+        return n * fatorial(n - 1);
+    }
+
+}
+
