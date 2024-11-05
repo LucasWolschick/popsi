@@ -247,7 +247,7 @@ public class Lexer {
     private String next() {
         var ch = src.codePointAt(current);
         current += Character.charCount(ch);
-        if (ch == Character.LINE_SEPARATOR) {
+        if (new String(Character.toChars(ch)).equals("\n")) {
             pos = pos.nextLine();
         } else {
             // assumindo que os caracteres tem tamanho 1
@@ -274,6 +274,15 @@ public class Lexer {
         }
         var ch = src.codePointAt(current);
         return new String(Character.toChars(ch));
+    }
+
+    private String peekNext() {
+        if (atEof(current + 1)) {
+            return "";
+        }
+        var ch = src.codePointAt(current);
+        var ch2 = src.codePointAt(current + Character.charCount(ch));
+        return new String(Character.toChars(ch2));
     }
 
     private Token identifier() {
@@ -342,6 +351,11 @@ public class Lexer {
                     next();
                 }
                 if (peek().equals(".")) {
+                    if (peekNext().equals(".")) {
+                        // .. token
+                        var literal = Long.parseLong(src.substring(begin, current));
+                        return token(TokenType.INTEGER, literal);
+                    }
                     next();
                     if (!isDigit(peek())) {
                         throw new LexerException("Literal numérico inválido: esperava dígito após o ponto");
@@ -361,6 +375,11 @@ public class Lexer {
             next();
         }
         if (peek().equals(".")) {
+            if (peekNext().equals(".")) {
+                // .. token
+                var literal = Long.parseLong(src.substring(begin, current));
+                return token(TokenType.INTEGER, literal);
+            }
             next();
             if (!isDigit(peek())) {
                 throw new LexerException("Literal numérico inválido: esperava dígito após o ponto");
@@ -436,7 +455,11 @@ public class Lexer {
     }
 
     private boolean atEof() {
-        return current >= src.length();
+        return atEof(current);
+    }
+
+    private boolean atEof(int where) {
+        return where >= src.length();
     }
 
     private Token token(TokenType type) {
