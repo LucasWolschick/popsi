@@ -1,6 +1,8 @@
 package popsi;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 
 import popsi.CompilerError.ErrorType;
@@ -8,27 +10,32 @@ import popsi.Token.TokenType;
 
 public class Lexer {
     public static LexerResult lex(String src) {
-        try {
-            var lexer = new Lexer(src);
-            var tokens = new ArrayList<Token>();
-            while (true) {
+        var lexer = new Lexer(src);
+        var tokens = new ArrayList<Token>();
+        var errors = new ArrayList<CompilerError>();
+        while (true) {
+            try {
                 var token = lexer.scan();
                 tokens.add(token);
                 if (token.type() == TokenType.EOF) {
                     break;
                 }
+            } catch (LexerException e) {
+                errors.add(e.err);
             }
+        }
+        if (errors.isEmpty()) {
             return new LexerResult.Success(tokens);
-        } catch (LexerException e) {
-            return new LexerResult.Error(e.err);
+        } else {
+            return new LexerResult.Error(errors);
         }
     }
 
-    private sealed interface LexerResult {
-        record Success(List<Token> tokens) implements LexerResult {
+    public static sealed interface LexerResult permits LexerResult.Success, LexerResult.Error {
+        final record Success(List<Token> tokens) implements LexerResult {
         }
 
-        record Error(CompilerError error) implements LexerResult {
+        final record Error(List<CompilerError> error) implements LexerResult {
         }
     }
 
@@ -36,12 +43,19 @@ public class Lexer {
         public CompilerError err;
 
         public LexerException(String message) {
-            this.err = new CompilerError(ErrorType.LEXICAL, message, pos);
+            this(message, beginPos);
+        }
+
+        public LexerException(String message, FilePosition where) {
+            this.err = new CompilerError(ErrorType.LEXICAL, message, where);
         }
     }
 
     /// Conteúdos do arquivo sendo analisado
     private String src;
+
+    /// Posição do início do lexema atual
+    private FilePosition beginPos;
 
     /// Posição atual no arquivo
     private FilePosition pos;
@@ -54,17 +68,18 @@ public class Lexer {
 
     private Lexer(String src) {
         this.src = src;
-        this.pos = new FilePosition(1, 1);
+        this.pos = new FilePosition(1, 1, src);
+        this.beginPos = this.pos;
         this.current = 0;
         this.begin = 0;
     }
 
     private Token scan() throws LexerException {
+        begin = current;
+        beginPos = pos;
         if (atEof()) {
             return token(TokenType.EOF);
         }
-
-        begin = current;
         var ch = next();
 
         switch (ch) {
@@ -191,7 +206,7 @@ public class Lexer {
                     next();
                     return token(TokenType.AND);
                 } else {
-                    throw new LexerException("Token inválido");
+                    throw new LexerException("Símbolo não reconhecido (esperava '&&', encontrou '&')");
                 }
             }
             case "|": {
@@ -199,7 +214,7 @@ public class Lexer {
                     next();
                     return token(TokenType.OR);
                 } else {
-                    throw new LexerException("Token inválido");
+                    throw new LexerException("Símbolo não reconhecido (esperava '||', encontrou '|')");
                 }
             }
             // espaço em branco
@@ -207,21 +222,22 @@ public class Lexer {
             case "\t":
             case "\r":
             case "\n":
-                // TODO: stack overflow
+                while (isWhitespace(peek())) {
+                    next();
+                }
                 return scan();
 
-            // strings TODO
             case "\"":
                 return string();
 
             // demais
             default: {
-                if (isIdentifierBegin(ch)) {
+                if (isDigit(ch)) {
+                    return number(ch);
+                } else if (isIdentifierBegin(ch)) {
                     return identifier();
-                } else if (isDigit(ch)) {
-                    return number();
                 } else {
-                    throw new LexerException("Token inválido");
+                    throw new LexerException("Símbolo não reconhecido");
                 }
             }
 
@@ -231,7 +247,25 @@ public class Lexer {
     private String next() {
         var ch = src.codePointAt(current);
         current += Character.charCount(ch);
+        if (ch == Character.LINE_SEPARATOR) {
+            pos = pos.nextLine();
+        } else {
+            // assumindo que os caracteres tem tamanho 1
+            pos = pos.nextColumn();
+        }
         return new String(Character.toChars(ch));
+    }
+
+    private String match(String expected) throws LexerException {
+        if (atEof()) {
+            throw new LexerException(String.format("Esperava %s, encontrado fim do arquivo", expected),
+                    pos.previousColumn());
+        }
+        var ch = next();
+        if (ch.equals(expected)) {
+            return ch;
+        }
+        throw new LexerException(String.format("Esperava %s, encontrado \"%s\"", expected, ch), pos.previousColumn());
     }
 
     private String peek() {
@@ -245,7 +279,7 @@ public class Lexer {
     private Token identifier() {
         // já consumimos o primeiro caractere
         String ch;
-        while ((ch = peek()) != "" && isIdentifierContinuation(ch)) {
+        while (!(ch = peek()).equals("") && isIdentifierContinuation(ch)) {
             next();
         }
 
@@ -270,45 +304,117 @@ public class Lexer {
         }
     }
 
-    private Token number() throws LexerException {
-        // TODO: já faz o parse do number pro valor java
+    private Token number(String firstDigit) throws LexerException {
         // já consumimos o primeiro caractere
-        String ch;
-        while ((ch = peek()) != "" && isDigit(ch)) {
+        if (firstDigit.equals("0")) {
+            if (peek().equals("x")) {
+                next();
+                while (!peek().isEmpty() && peek().matches("[0-9a-fA-F]")) {
+                    next();
+                }
+                if (!peek().isEmpty() && !isWhitespace(peek())) {
+                    throw new LexerException("Literal numérico inválido");
+                }
+                var literal = Long.parseLong(src.substring(begin + 2, current), 16);
+                return token(TokenType.INTEGER, literal);
+            } else if (peek().equals("b")) {
+                next();
+                while (!peek().isEmpty() && peek().matches("[01]")) {
+                    next();
+                }
+                if (!peek().isEmpty() && !isWhitespace(peek())) {
+                    throw new LexerException("Literal numérico inválido");
+                }
+                var literal = Long.parseLong(src.substring(begin + 2, current), 2);
+                return token(TokenType.INTEGER, literal);
+            } else if (peek().equals("o")) {
+                next();
+                while (!peek().isEmpty() && peek().matches("[0-7]")) {
+                    next();
+                }
+                if (!peek().isEmpty() && !isWhitespace(peek())) {
+                    throw new LexerException("Literal numérico inválido");
+                }
+                var literal = Long.parseLong(src.substring(begin + 2, current), 8);
+                return token(TokenType.INTEGER, literal);
+            } else {
+                while (!peek().isEmpty() && isDigit(peek())) {
+                    next();
+                }
+                if (peek().equals(".")) {
+                    next();
+                    if (!isDigit(peek())) {
+                        throw new LexerException("Literal numérico inválido: esperava dígito após o ponto");
+                    }
+                    while (!peek().isEmpty() && isDigit(peek())) {
+                        next();
+                    }
+                    var literal = Double.parseDouble(src.substring(begin, current));
+                    return token(TokenType.FLOAT, literal);
+                }
+                var literal = Long.parseLong(src.substring(begin, current));
+                return token(TokenType.INTEGER, literal);
+            }
+        }
+
+        while (!peek().isEmpty() && isDigit(peek())) {
             next();
         }
-        if (ch == ".") {
+        if (peek().equals(".")) {
             next();
             if (!isDigit(peek())) {
-                throw new LexerException("Esperava número após '.'");
+                throw new LexerException("Literal numérico inválido: esperava dígito após o ponto");
             }
-            while ((ch = peek()) != "" && isDigit(ch)) {
+            while (!peek().isEmpty() && isDigit(peek())) {
                 next();
             }
-            return token(TokenType.FLOAT);
+            var literal = Double.parseDouble(src.substring(begin, current));
+            return token(TokenType.FLOAT, literal);
         }
-        return token(TokenType.INTEGER);
+        var literal = Long.parseLong(src.substring(begin, current));
+        return token(TokenType.INTEGER, literal);
     }
 
     private Token string() throws LexerException {
-        // TODO: faz o parse da string pro valor java
         // consumimos a abertura, agora vamos até o fechamento
         String ch;
         boolean escaping = false;
-        while ((ch = peek()) != "" && (ch != "\"" || escaping)) {
-            if (ch == "\\") {
-                escaping = true;
-            } else {
+
+        HashMap<String, String> escapes = new HashMap<>();
+        escapes.put("n", "\n");
+        escapes.put("r", "\r");
+        escapes.put("t", "\t");
+        escapes.put("\"", "\"");
+        escapes.put("\\", "\\");
+
+        while (!(ch = peek()).isEmpty() && (!ch.equals("\"") || escaping)) {
+            if (escaping) {
+                if (!escapes.containsKey(ch)) {
+                    var where = pos.previousColumn();
+                    // consome até o final da string
+                    while (!(ch = peek()).isEmpty() && (!ch.equals("\"") || escaping)) {
+                        if (escaping) {
+                            escaping = false;
+                        } else if (ch.equals("\"")) {
+                            escaping = true;
+                        }
+                        next();
+                    }
+                    match("\"");
+                    throw new LexerException("Escape inválido", where);
+                }
                 escaping = false;
+            } else if (ch.equals("\\")) {
+                escaping = true;
             }
             next();
         }
-        if (ch == "") {
-            throw new LexerException("String não fechada");
-        }
-        // senão, chegamos ao "
-        next();
-        return token(TokenType.STRING);
+        match("\"");
+        var literal = src.substring(begin + 1, current - 1);
+        // convert escapes
+        literal = literal.replace("\\n", "\n").replace("\\r", "\r").replace("\\t", "\t").replace("\\\"", "\"")
+                .replace("\\\\", "\\");
+        return token(TokenType.STRING, literal);
     }
 
     private boolean isDigit(String ch) {
@@ -323,6 +429,10 @@ public class Lexer {
     private boolean isIdentifierContinuation(String ch) {
         var cp = ch.codePointAt(0);
         return Character.isUnicodeIdentifierPart(cp) || Character.isEmoji(cp);
+    }
+
+    private boolean isWhitespace(String ch) {
+        return ch.matches("[ \t\r\n]");
     }
 
     private boolean atEof() {

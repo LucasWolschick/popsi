@@ -31,6 +31,10 @@ public record Token(String lexeme, TokenType type, FilePosition where, Object li
 
     @Override
     public String toString() {
-        return String.format("(%s, %s)", type, lexeme);
+        if (literal != null) {
+            return String.format("(%s, %s, %s)", type, lexeme, literal);
+        } else {
+            return String.format("(%s, %s)", type, lexeme);
+        }
     }
 }

@@ -29,7 +29,16 @@ public class Popsi {
 
     private static void compile(String src) {
         var tokens = Lexer.lex(src);
-        System.out.println(tokens);
+        if (tokens instanceof Lexer.LexerResult.Success s) {
+            for (var token : s.tokens()) {
+                System.out.println(token);
+            }
+        } else if (tokens instanceof Lexer.LexerResult.Error e) {
+            for (var error : e.error()) {
+                error.printError();
+            }
+            System.exit(1);
+        }
     }
 }
 

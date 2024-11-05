@@ -1,5 +1,4 @@
 // Conta quantos elementos pares tem num vetor.
-
 fn conta_pares(vetor: [i32]) {
     let count: i32 = 0;
 
