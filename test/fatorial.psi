@@ -1,0 +1,14 @@
+// Função que calcula o fatorial de um valor de entrada
+
+fn fatorial(valor: i32) -> i64 {
+    if valor <= 1 {
+        return 1;
+    }
+
+    return valor * fatorial(valor - 1);
+}
+
+fn main() {
+    let resp: i64 = fatorial(5);
+    debug resp;
+}

@@ -1,0 +1,14 @@
+rec Pessoa {
+    let nome: String;
+    let idade: i32;
+    let cpf: i64;
+};
+
+fn main() {
+    let pessoa1: Pessoa = Pessoa(nome: "Pedro", cpf: 12345612345);
+    pessoa1.idade = 19;
+
+    debug pessoa1.nome;
+    debug pessoa1.idade;
+    debug pessoa1.cpf;
+}

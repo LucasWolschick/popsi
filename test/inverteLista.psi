@@ -1,0 +1,23 @@
+// Inverte uma lista numeros utilizando a própria lista
+
+fn inverte_lista(lista: [i32]) -> [i32] {
+    let start: i32 = 0;
+    let end: i32 = #lista - 1;
+    let aux: i32;
+
+    for i: i32 in 0..(#vetor/2) {
+        aux = vetor[start];
+        vetor[start] = vetor[end];
+        vetor[end] = aux;
+        start++;
+        end--;
+    }
+
+    return vetor;
+}
+
+fn main() {
+    let vet: [i32] = [1, 2, 3, 4, 5];
+    let resp: [i32] = inverte_lista(vet);
+    debug resp;
+}
