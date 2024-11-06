@@ -129,6 +129,7 @@ public class Lexer {
                 } else {
                     token(match("=") ? TokenType.SLASH_EQUAL : TokenType.SLASH);
                 }
+                return;
             case "*":
                 token(match("=") ? TokenType.STAR_EQUAL : TokenType.STAR);
                 return;
@@ -178,14 +179,12 @@ public class Lexer {
             default: {
                 if (isDigit(ch)) {
                     number(ch);
-                    return;
                 } else if (isIdentifierBegin(ch)) {
                     identifier();
-                    return;
                 } else {
                     error("Símbolo não reconhecido");
-                    return;
                 }
+                return;
             }
 
         }
@@ -207,7 +206,7 @@ public class Lexer {
         if (atEof()) {
             return false;
         }
-        if (peek() != expected) {
+        if (!peek().equals(expected)) {
             return false;
         }
         next();
