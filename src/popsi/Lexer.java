@@ -149,7 +149,7 @@ public class Lexer {
                     next();
                     token(TokenType.AND);
                 } else {
-                    error("Símbolo não reconhecido (esperava '&&', encontrou '&')");
+                    error("Símbolo não reconhecido (encontrado '&', você não quis dizer '&&'?)");
                 }
                 return;
             case "|":
@@ -157,7 +157,7 @@ public class Lexer {
                     next();
                     token(TokenType.OR);
                 } else {
-                    error("Símbolo não reconhecido (esperava '||', encontrou '|')");
+                    error("Símbolo não reconhecido (encontrado '|', você não quis dizer '||'?)");
                 }
                 return;
             // espaço em branco
