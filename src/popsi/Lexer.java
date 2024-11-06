@@ -126,6 +126,7 @@ public class Lexer {
                     while (!atEof() && !peek().equals("\n")) {
                         next();
                     }
+                    begin = current;
                 } else {
                     token(match("=") ? TokenType.SLASH_EQUAL : TokenType.SLASH);
                 }
