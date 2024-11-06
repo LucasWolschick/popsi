@@ -9,25 +9,18 @@ import popsi.CompilerError.ErrorType;
 import popsi.Token.TokenType;
 
 public class Lexer {
-    public static LexerResult lex(String src) {
+    public static Result<List<Token>, List<CompilerError>> lex(String src) {
         var lexer = new Lexer(src);
-        var tokens = new ArrayList<Token>();
-        var errors = new ArrayList<CompilerError>();
-        while (true) {
-            try {
-                var token = lexer.scan();
-                tokens.add(token);
-                if (token.type() == TokenType.EOF) {
-                    break;
-                }
-            } catch (LexerException e) {
-                errors.add(e.err);
-            }
+
+        while (!lexer.atEof()) {
+            lexer.scan();
         }
-        if (errors.isEmpty()) {
-            return new LexerResult.Success(tokens);
+        lexer.token(TokenType.EOF);
+
+        if (lexer.errors.isEmpty()) {
+            return new Result.Success<>(lexer.tokens);
         } else {
-            return new LexerResult.Error(errors);
+            return new Result.Error<>(lexer.errors);
         }
     }
 
@@ -39,20 +32,14 @@ public class Lexer {
         }
     }
 
-    private class LexerException extends Exception {
-        public CompilerError err;
-
-        public LexerException(String message) {
-            this(message, beginPos);
-        }
-
-        public LexerException(String message, FilePosition where) {
-            this.err = new CompilerError(ErrorType.LEXICAL, message, where);
-        }
-    }
-
     /// Conteúdos do arquivo sendo analisado
     private String src;
+
+    /// Tokens reconhecidos durante a análise
+    private List<Token> tokens;
+
+    /// Erros encontrados durante a análise
+    private List<CompilerError> errors;
 
     /// Posição do início do lexema atual
     private FilePosition beginPos;
@@ -68,155 +55,111 @@ public class Lexer {
 
     private Lexer(String src) {
         this.src = src;
+        this.tokens = new ArrayList<>();
+        this.errors = new ArrayList<>();
         this.pos = new FilePosition(1, 1, src);
         this.beginPos = this.pos;
         this.current = 0;
         this.begin = 0;
     }
 
-    private Token scan() throws LexerException {
+    private void scan() {
         begin = current;
         beginPos = pos;
         if (atEof()) {
-            return token(TokenType.EOF);
+            return;
         }
         var ch = next();
 
         switch (ch) {
             // um caractere
             case "(":
-                return token(TokenType.L_PAREN);
+                token(TokenType.L_PAREN);
+                return;
             case ")":
-                return token(TokenType.R_PAREN);
+                token(TokenType.R_PAREN);
+                return;
             case "[":
-                return token(TokenType.L_BRACKET);
+                token(TokenType.L_BRACKET);
+                return;
             case "]":
-                return token(TokenType.R_BRACKET);
+                token(TokenType.R_BRACKET);
+                return;
             case "{":
-                return token(TokenType.L_CURLY);
+                token(TokenType.L_CURLY);
+                return;
             case "}":
-                return token(TokenType.R_CURLY);
+                token(TokenType.R_CURLY);
+                return;
             case ":":
-                return token(TokenType.COLON);
+                token(TokenType.COLON);
+                return;
             case ";":
-                return token(TokenType.SEMICOLON);
+                token(TokenType.SEMICOLON);
+                return;
             case "#":
-                return token(TokenType.HASH);
+                token(TokenType.HASH);
+                return;
             case ",":
-                return token(TokenType.COMMA);
+                token(TokenType.COMMA);
+                return;
 
             // dois caracteres
             case "=":
-                switch (peek()) {
-                    case "=":
-                        next();
-                        return token(TokenType.EQUAL_EQUAL);
-                    default:
-                        return token(TokenType.EQUAL);
-                }
+                token(match("=") ? TokenType.EQUAL_EQUAL : TokenType.EQUAL);
+                return;
             case "%":
-                switch (peek()) {
-                    case "=":
-                        next();
-                        return token(TokenType.PERCENT_EQUAL);
-                    default:
-                        return token(TokenType.PERCENT);
-                }
+                token(match("=") ? TokenType.PERCENT_EQUAL : TokenType.PERCENT);
+                return;
             case "!":
-                switch (peek()) {
-                    case "=":
-                        next();
-                        return token(TokenType.BANG_EQUAL);
-                    default:
-                        return token(TokenType.BANG);
-                }
+                token(match("=") ? TokenType.BANG_EQUAL : TokenType.BANG);
+                return;
             case "+":
-                switch (peek()) {
-                    case "=":
-                        next();
-                        return token(TokenType.PLUS_EQUAL);
-                    default:
-                        return token(TokenType.PLUS);
-                }
+                token(match("=") ? TokenType.PLUS_EQUAL : TokenType.PLUS);
+                return;
             case "-":
-                switch (peek()) {
-                    case "=":
-                        next();
-                        return token(TokenType.MINUS_EQUAL);
-                    default:
-                        return token(TokenType.MINUS);
-                }
+                token(match("=") ? TokenType.MINUS_EQUAL : TokenType.MINUS);
+                return;
             case "/":
-                switch (peek()) {
-                    case "=":
+                if (match("/")) {
+                    // comentário
+                    while (!atEof() && !peek().equals("\n")) {
                         next();
-                        return token(TokenType.SLASH_EQUAL);
-                    case "/":
-                        // comment
-                        while (!atEof() && !peek().equals("\n")) {
-                            next();
-                        }
-                        return scan();
-                    default:
-                        return token(TokenType.SLASH);
+                    }
+                } else {
+                    token(match("=") ? TokenType.SLASH_EQUAL : TokenType.SLASH);
                 }
             case "*":
-                switch (peek()) {
-                    case "=":
-                        next();
-                        return token(TokenType.STAR_EQUAL);
-                    default:
-                        return token(TokenType.STAR);
-                }
+                token(match("=") ? TokenType.STAR_EQUAL : TokenType.STAR);
+                return;
             case "^":
-                switch (peek()) {
-                    case "=":
-                        next();
-                        return token(TokenType.HAT_EQUAL);
-                    default:
-                        return token(TokenType.HAT);
-                }
+                token(match("=") ? TokenType.HAT_EQUAL : TokenType.HAT);
+                return;
             case "<":
-                switch (peek()) {
-                    case "=":
-                        next();
-                        return token(TokenType.LESSER_EQUAL);
-                    default:
-                        return token(TokenType.LESSER);
-                }
+                token(match("=") ? TokenType.LESSER_EQUAL : TokenType.LESSER);
+                return;
             case ">":
-                switch (peek()) {
-                    case "=":
-                        next();
-                        return token(TokenType.GREATER_EQUAL);
-                    default:
-                        return token(TokenType.GREATER);
-                }
+                token(match("=") ? TokenType.GREATER_EQUAL : TokenType.GREATER);
+                return;
             case ".":
-                switch (peek()) {
-                    case ".":
-                        next();
-                        return token(TokenType.DOT_DOT);
-                    default:
-                        return token(TokenType.DOT);
-                }
-                // dois caracteres
-            case "&": {
+                token(match(".") ? TokenType.DOT_DOT : TokenType.DOT);
+                return;
+            case "&":
                 if (peek().equals("&")) {
                     next();
-                    return token(TokenType.AND);
+                    token(TokenType.AND);
                 } else {
-                    throw new LexerException("Símbolo não reconhecido (esperava '&&', encontrou '&')");
+                    error("Símbolo não reconhecido (esperava '&&', encontrou '&')");
                 }
-            }
-            case "|": {
+                return;
+            case "|":
                 if (peek().equals("|")) {
                     next();
-                    return token(TokenType.OR);
+                    token(TokenType.OR);
                 } else {
-                    throw new LexerException("Símbolo não reconhecido (esperava '||', encontrou '|')");
+                    error("Símbolo não reconhecido (esperava '||', encontrou '|')");
                 }
-            }
+                return;
             // espaço em branco
             case " ":
             case "\t":
@@ -225,19 +168,23 @@ public class Lexer {
                 while (isWhitespace(peek())) {
                     next();
                 }
-                return scan();
+                return;
 
             case "\"":
-                return string();
+                string();
+                return;
 
             // demais
             default: {
                 if (isDigit(ch)) {
-                    return number(ch);
+                    number(ch);
+                    return;
                 } else if (isIdentifierBegin(ch)) {
-                    return identifier();
+                    identifier();
+                    return;
                 } else {
-                    throw new LexerException("Símbolo não reconhecido");
+                    error("Símbolo não reconhecido");
+                    return;
                 }
             }
 
@@ -256,16 +203,15 @@ public class Lexer {
         return new String(Character.toChars(ch));
     }
 
-    private String match(String expected) throws LexerException {
+    private boolean match(String expected) {
         if (atEof()) {
-            throw new LexerException(String.format("Esperava %s, encontrado fim do arquivo", expected),
-                    pos.previousColumn());
+            return false;
         }
-        var ch = next();
-        if (ch.equals(expected)) {
-            return ch;
+        if (peek() != expected) {
+            return false;
         }
-        throw new LexerException(String.format("Esperava %s, encontrado \"%s\"", expected, ch), pos.previousColumn());
+        next();
+        return true;
     }
 
     private String peek() {
@@ -285,7 +231,7 @@ public class Lexer {
         return new String(Character.toChars(ch2));
     }
 
-    private Token identifier() {
+    private void identifier() {
         // já consumimos o primeiro caractere
         String ch;
         while (!(ch = peek()).equals("") && isIdentifierContinuation(ch)) {
@@ -295,145 +241,135 @@ public class Lexer {
         var lexeme = src.substring(begin, current);
         switch (lexeme) {
             case "fn":
-                return token(TokenType.FN);
+                token(TokenType.FN);
+                break;
             case "let":
-                return token(TokenType.LET);
+                token(TokenType.LET);
+                break;
             case "for":
-                return token(TokenType.FOR);
+                token(TokenType.FOR);
+                break;
             case "while":
-                return token(TokenType.WHILE);
+                token(TokenType.WHILE);
+                break;
             case "return":
-                return token(TokenType.RETURN);
+                token(TokenType.RETURN);
+                break;
             case "if":
-                return token(TokenType.IF);
+                token(TokenType.IF);
+                break;
             case "debug":
-                return token(TokenType.DEBUG);
+                token(TokenType.DEBUG);
+                break;
             default:
-                return token(TokenType.IDENTIFIER);
+                token(TokenType.IDENTIFIER);
+                break;
         }
     }
 
-    private Token number(String firstDigit) throws LexerException {
-        // já consumimos o primeiro caractere
-        if (firstDigit.equals("0")) {
-            if (peek().equals("x")) {
-                next();
-                while (!peek().isEmpty() && peek().matches("[0-9a-fA-F]")) {
-                    next();
-                }
-                if (!peek().isEmpty() && !isWhitespace(peek())) {
-                    throw new LexerException("Literal numérico inválido");
-                }
-                var literal = Long.parseLong(src.substring(begin + 2, current), 16);
-                return token(TokenType.INTEGER, literal);
-            } else if (peek().equals("b")) {
-                next();
-                while (!peek().isEmpty() && peek().matches("[01]")) {
-                    next();
-                }
-                if (!peek().isEmpty() && !isWhitespace(peek())) {
-                    throw new LexerException("Literal numérico inválido");
-                }
-                var literal = Long.parseLong(src.substring(begin + 2, current), 2);
-                return token(TokenType.INTEGER, literal);
-            } else if (peek().equals("o")) {
-                next();
-                while (!peek().isEmpty() && peek().matches("[0-7]")) {
-                    next();
-                }
-                if (!peek().isEmpty() && !isWhitespace(peek())) {
-                    throw new LexerException("Literal numérico inválido");
-                }
-                var literal = Long.parseLong(src.substring(begin + 2, current), 8);
-                return token(TokenType.INTEGER, literal);
-            } else {
-                while (!peek().isEmpty() && isDigit(peek())) {
-                    next();
-                }
-                if (peek().equals(".")) {
-                    if (peekNext().equals(".")) {
-                        // .. token
-                        var literal = Long.parseLong(src.substring(begin, current));
-                        return token(TokenType.INTEGER, literal);
-                    }
-                    next();
-                    if (!isDigit(peek())) {
-                        throw new LexerException("Literal numérico inválido: esperava dígito após o ponto");
-                    }
-                    while (!peek().isEmpty() && isDigit(peek())) {
-                        next();
-                    }
-                    var literal = Double.parseDouble(src.substring(begin, current));
-                    return token(TokenType.FLOAT, literal);
-                }
-                var literal = Long.parseLong(src.substring(begin, current));
-                return token(TokenType.INTEGER, literal);
-            }
+    private void number(String firstDigit) {
+        var zero = firstDigit.equals("0");
+        if (zero && match("x")) {
+            hexNumber();
+        } else if (zero && match("b")) {
+            binaryNumber();
+        } else if (zero && match("o")) {
+            octalNumber();
+        } else {
+            decimalNumber();
         }
+    }
 
-        while (!peek().isEmpty() && isDigit(peek())) {
+    private void hexNumber() {
+        while (peek().matches("[0-9a-fA-F]")) {
             next();
         }
-        if (peek().equals(".")) {
-            if (peekNext().equals(".")) {
-                // .. token
-                var literal = Long.parseLong(src.substring(begin, current));
-                return token(TokenType.INTEGER, literal);
-            }
+        var literal = Long.parseLong(src.substring(begin + 2, current), 16);
+        token(TokenType.INTEGER, literal);
+    }
+
+    private void binaryNumber() {
+        while (peek().matches("[01]")) {
             next();
-            if (!isDigit(peek())) {
-                throw new LexerException("Literal numérico inválido: esperava dígito após o ponto");
-            }
-            while (!peek().isEmpty() && isDigit(peek())) {
+        }
+        var literal = Long.parseLong(src.substring(begin + 2, current), 2);
+        token(TokenType.INTEGER, literal);
+    }
+
+    private void octalNumber() {
+        while (peek().matches("[0-7]")) {
+            next();
+        }
+        var literal = Long.parseLong(src.substring(begin + 2, current), 8);
+        token(TokenType.INTEGER, literal);
+    }
+
+    private void decimalNumber() {
+        while (isDigit(peek())) {
+            next();
+        }
+        if (peek().equals(".") && isDigit(peekNext())) {
+            next();
+            while (isDigit(peek())) {
                 next();
             }
             var literal = Double.parseDouble(src.substring(begin, current));
-            return token(TokenType.FLOAT, literal);
+            token(TokenType.FLOAT, literal);
+        } else {
+            var literal = Long.parseLong(src.substring(begin, current));
+            token(TokenType.INTEGER, literal);
         }
-        var literal = Long.parseLong(src.substring(begin, current));
-        return token(TokenType.INTEGER, literal);
     }
 
-    private Token string() throws LexerException {
-        // consumimos a abertura, agora vamos até o fechamento
-        String ch;
-        boolean escaping = false;
-
-        HashMap<String, String> escapes = new HashMap<>();
-        escapes.put("n", "\n");
-        escapes.put("r", "\r");
-        escapes.put("t", "\t");
-        escapes.put("\"", "\"");
-        escapes.put("\\", "\\");
-
-        while (!(ch = peek()).isEmpty() && (!ch.equals("\"") || escaping)) {
-            if (escaping) {
-                if (!escapes.containsKey(ch)) {
-                    var where = pos.previousColumn();
-                    // consome até o final da string
-                    while (!(ch = peek()).isEmpty() && (!ch.equals("\"") || escaping)) {
-                        if (escaping) {
-                            escaping = false;
-                        } else if (ch.equals("\"")) {
-                            escaping = true;
-                        }
-                        next();
-                    }
-                    match("\"");
-                    throw new LexerException("Escape inválido", where);
-                }
-                escaping = false;
-            } else if (ch.equals("\\")) {
-                escaping = true;
+    private void string() {
+        while (!atEof() && !peek().equals("\"")) {
+            if (peek().equals("\n")) {
+                error("String não fechada");
+                return;
             }
+            stringContent();
+        }
+
+        if (atEof()) {
+            error("String não fechada");
+            return;
+        }
+
+        // fecha a string
+        next();
+
+        var literal = src.substring(begin + 1, current - 1);
+        literal = literal.replace("\\n", "\n")
+                .replace("\\r", "\r")
+                .replace("\\t", "\t")
+                .replace("\\\"", "\"")
+                .replace("\\\\", "\\");
+        token(TokenType.STRING, literal);
+    }
+
+    private void stringContent() {
+        if (peek().equals("\\")) {
+            stringEscape();
+        } else {
             next();
         }
-        match("\"");
-        var literal = src.substring(begin + 1, current - 1);
-        // convert escapes
-        literal = literal.replace("\\n", "\n").replace("\\r", "\r").replace("\\t", "\t").replace("\\\"", "\"")
-                .replace("\\\\", "\\");
-        return token(TokenType.STRING, literal);
+    }
+
+    private void stringEscape() {
+        next();
+        switch (peek()) {
+            case "\"":
+            case "\\":
+            case "n":
+            case "r":
+            case "t":
+                next();
+                break;
+            default:
+                error("Escape inválido");
+                next();
+                break;
+        }
     }
 
     private boolean isDigit(String ch) {
@@ -462,12 +398,16 @@ public class Lexer {
         return where >= src.length();
     }
 
-    private Token token(TokenType type) {
-        return token(type, null);
+    private void token(TokenType type) {
+        token(type, null);
     }
 
-    private Token token(TokenType type, Object literal) {
+    private void token(TokenType type, Object literal) {
         var lexeme = src.substring(begin, current);
-        return new Token(lexeme, type, pos, literal);
+        tokens.add(new Token(lexeme, type, pos, literal));
+    }
+
+    private void error(String message) {
+        errors.add(new CompilerError(ErrorType.LEXICAL, message, beginPos));
     }
 }

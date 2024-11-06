@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.List;
 
 public class Popsi {
     public static void main(String... args) {
@@ -29,15 +30,18 @@ public class Popsi {
 
     private static void compile(String src) {
         var tokens = Lexer.lex(src);
-        if (tokens instanceof Lexer.LexerResult.Success s) {
-            for (var token : s.tokens()) {
-                System.out.println(token);
+        switch (tokens) {
+            case Result.Success<List<Token>, List<CompilerError>> s -> {
+                for (var token : s.value()) {
+                    System.out.println(token);
+                }
             }
-        } else if (tokens instanceof Lexer.LexerResult.Error e) {
-            for (var error : e.error()) {
-                error.printError();
+            case Result.Error<List<Token>, List<CompilerError>> e -> {
+                for (var error : e.error()) {
+                    error.printError();
+                }
+                System.exit(1);
             }
-            System.exit(1);
         }
     }
 }

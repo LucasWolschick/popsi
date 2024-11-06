@@ -1,0 +1,52 @@
+TOKENS -> "(" | ")"
+        | "[" | "]"
+        | "{" | "}"
+        | ":"
+        | ";"
+        | "#"
+        | ","
+        | "="
+        | "%"
+        | "!"
+        | "+"
+        | "-"
+        | "/"
+        | "*"
+        | "^"
+        | "<"
+        | ">"
+        | "."
+        | "=="
+        | "%="
+        | "!="
+        | "+="
+        | "-="
+        | "/="
+        | "*="
+        | "^="
+        | "<="
+        | ">="
+        | "||"
+        | "&&"
+        | "fn" | "let" | "for" | "while" | "return" | "if" | "debug"
+        | IDENTIFIER
+        | INTEGER
+        | FLOAT
+        | STRING
+        | CHAR
+        | EOF
+
+IDENTIFIER -> <identifierBegin> <identifierContinue>*
+
+INTEGER -> "0x" HEX_DIGIT+
+         | "0b" BINARY_DIGIT+
+         | "0o" OCTAL_DIGIT+
+         | DIGIT+
+FLOAT -> DIGIT+ "." DIGIT+
+
+STRING -> "\"" STRING_CONTENT* "\""
+
+STRING_CONTENT -> <any character except " or \>
+                | "\" ESCAPE_SEQUENCE
+
+ESCAPE_SEQUENCE -> "n" | "t" | "r" | "\" | """
