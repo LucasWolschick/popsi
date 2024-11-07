@@ -22,14 +22,6 @@ public class Lexer {
         }
     }
 
-    public static sealed interface LexerResult permits LexerResult.Success, LexerResult.Error {
-        final record Success(List<Token> tokens) implements LexerResult {
-        }
-
-        final record Error(List<CompilerError> error) implements LexerResult {
-        }
-    }
-
     /// Conteúdos do arquivo sendo analisado
     private String src;
 

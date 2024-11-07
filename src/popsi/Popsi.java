@@ -31,12 +31,12 @@ public class Popsi {
     private static void compile(String src) {
         var tokens = Lexer.lex(src);
         switch (tokens) {
-            case Result.Success<List<Token>, List<CompilerError>> s -> {
+            case Result.Success<List<Token>, ?> s -> {
                 for (var token : s.value()) {
                     System.out.println(token);
                 }
             }
-            case Result.Error<List<Token>, List<CompilerError>> e -> {
+            case Result.Error<?, List<CompilerError>> e -> {
                 for (var error : e.error()) {
                     error.printError();
                 }
