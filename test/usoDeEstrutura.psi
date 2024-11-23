@@ -2,7 +2,7 @@ rec Pessoa {
     let nome: String;
     let idade: i32;
     let cpf: i64;
-};
+}
 
 fn main() {
     let pessoa1: Pessoa = Pessoa(nome: "Pedro", cpf: 12345612345);

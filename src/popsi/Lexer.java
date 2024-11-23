@@ -108,7 +108,7 @@ public class Lexer {
                 token(match("=") ? TokenType.PLUS_EQUAL : TokenType.PLUS);
                 return;
             case "-":
-                token(match("=") ? TokenType.MINUS_EQUAL : TokenType.MINUS);
+                token(match("=") ? TokenType.MINUS_EQUAL : match(">") ? TokenType.ARROW : TokenType.MINUS);
                 return;
             case "/":
                 if (match("/")) {
@@ -250,6 +250,9 @@ public class Lexer {
                 break;
             case "debug":
                 token(TokenType.DEBUG);
+                break;
+            case "else":
+                token(TokenType.ELSE);
                 break;
             default:
                 token(TokenType.IDENTIFIER);

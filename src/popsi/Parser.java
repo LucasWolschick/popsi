@@ -1,7 +1,11 @@
 package popsi;
 
 import java.util.*;
+
 import popsi.ast.*;
+import static popsi.ast.Ast.*;
+import static popsi.ast.Statement.*;
+import static popsi.ast.Expression.*;
 
 public class Parser {
     private final List<Token> tokens;
@@ -178,14 +182,14 @@ public class Parser {
         while (!atEoF() && getPrecedence(peek().type()) >= precedence) {
             Token operator = next();
             Expression right = parseBinaryExpression(getPrecedence(operator.type()) + 1);
-            left = new BinaryExpression(left, operator.lexeme(), right);
+            left = new BinaryExpression(left, BinaryOperator.fromTokenType(operator.type()), right);
         }
         return left;
     }
 
     private Expression parsePrimary() {
         if (match(Token.TokenType.IDENTIFIER)) {
-            return new VariableExpression(previous().lexeme());
+            return new VariableExpression(previous());
         } else if (match(Token.TokenType.INTEGER) || match(Token.TokenType.FLOAT) || match(Token.TokenType.STRING)) {
             return new Literal(previous().literal());
         } else if (match(Token.TokenType.L_PAREN)) {
