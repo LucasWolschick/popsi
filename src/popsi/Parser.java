@@ -1,9 +1,10 @@
 package popsi;
 
 import java.util.*;
+import popsi.ast.*;
 
 public class Parser {
-    private List<Token> tokens;
+    private final List<Token> tokens;
     private int current;
 
     public Parser(List<Token> tokens) {
@@ -27,7 +28,7 @@ public class Parser {
     }
 
     private Token peekNext() {
-        return tokens.get(current + 1);
+        return tokens.get(Math.min(current + 1, tokens.size() - 1));
     }
 
     private boolean match(Token.TokenType type) {
@@ -35,15 +36,12 @@ public class Parser {
             next();
             return true;
         }
-
         return false;
     }
 
     private Token consume(Token.TokenType type, String errorMessage) {
-        if (match(type)) {
+        if (match(type))
             return previous();
-        }
-
         throw new RuntimeException(errorMessage + " em " + peek().where());
     }
 
@@ -51,127 +49,161 @@ public class Parser {
         return tokens.get(current - 1);
     }
 
-    // Funções de análise da gramática
-    public void parse() {
+    // Função principal
+    public Program parse() {
+        List<Function> functions = new ArrayList<>();
         while (!atEoF()) {
-            parseDeclaration();
+            functions.add(parseFunctionDeclaration());
         }
+        return new Program(functions);
     }
 
-    private void parseDeclaration() {
-        if (match(Token.TokenType.FN)) {
-            parseDeclaration();
-        } else {
-            parseStatement();
-        }
-    }
-
-    private void parseFunctionDeclaration() {
-        consume(Token.TokenType.IDENTIFIER, "Esperado nome da função após 'fn'");
+    private Function parseFunctionDeclaration() {
+        consume(Token.TokenType.FN, "Esperado 'fn' no início da declaração de função");
+        String name = consume(Token.TokenType.IDENTIFIER, "Esperado nome da função após 'fn'").lexeme();
         consume(Token.TokenType.L_PAREN, "Esperado '(' após o nome da função");
-        parseParameterList();
+        List<Parameter> parameters = parseParameterList();
         consume(Token.TokenType.R_PAREN, "Esperado ')' após os parâmetros");
-        // if (match(Token.TokenType.ARROW)) {
-        // consume(Token.TokenType.IDENTIFIER, "Esperado tipo de retorno após '->'");
-        // }
-        consume(Token.TokenType.L_CURLY, "Esperado '{' no início do corpo da função");
-        parseBlock();
-        consume(Token.TokenType.R_CURLY, "Esperado '}' no final do corpo da função");
+
+        String returnType = null;
+        if (match(Token.TokenType.ARROW)) {
+            returnType = consume(Token.TokenType.IDENTIFIER, "Esperado tipo de retorno após '->'").lexeme();
+        }
+
+        Block body = parseBlock();
+        return new Function(name, parameters, returnType, body);
     }
 
-    private void parseParameterList() {
+    private List<Parameter> parseParameterList() {
+        List<Parameter> parameters = new ArrayList<>();
         if (!match(Token.TokenType.R_PAREN)) {
             do {
-                consume(Token.TokenType.IDENTIFIER, "Esperado nome do parâmetro");
+                String name = consume(Token.TokenType.IDENTIFIER, "Esperado nome do parâmetro").lexeme();
                 consume(Token.TokenType.COLON, "Esperado ':' após o nome do parâmetro");
-                consume(Token.TokenType.IDENTIFIER, "Esperado tipo do parâmetro");
+                String type = consume(Token.TokenType.IDENTIFIER, "Esperado tipo do parâmetro").lexeme();
+                parameters.add(new Parameter(name, type));
             } while (match(Token.TokenType.COMMA));
         }
+        return parameters;
     }
 
-    private void parseBlock() {
+    private Block parseBlock() {
+        consume(Token.TokenType.L_CURLY, "Esperado '{' no início do bloco");
+        List<Statement> statements = new ArrayList<>();
         while (!match(Token.TokenType.R_CURLY) && !atEoF()) {
-            parseStatement();
+            statements.add(parseStatement());
         }
+        return new Block(statements);
     }
 
-    private void parseStatement() {
+    private Statement parseStatement() {
         if (match(Token.TokenType.LET)) {
-            parseVariableDeclaration();
+            return parseVariableDeclaration();
         } else if (match(Token.TokenType.FOR)) {
-            parseForStatement();
+            return parseForStatement();
         } else if (match(Token.TokenType.WHILE)) {
-            parseWhileStatement();
+            return parseWhileStatement();
         } else if (match(Token.TokenType.IF)) {
-            parseIfStatement();
+            return parseIfStatement();
         } else if (match(Token.TokenType.RETURN)) {
-            parseReturnStatement();
+            return parseReturnStatement();
         } else if (match(Token.TokenType.DEBUG)) {
-            parseDebugStatement();
+            return parseDebugStatement();
         } else {
-            parseExpression();
+            return new ExpressionStatement(parseExpression());
         }
     }
 
-    private void parseVariableDeclaration() {
-        consume(Token.TokenType.IDENTIFIER, "Esperado nome da variável após 'let'");
+    private Declaration parseVariableDeclaration() {
+        String name = consume(Token.TokenType.IDENTIFIER, "Esperado nome da variável após 'let'").lexeme();
         consume(Token.TokenType.COLON, "Esperado ':' após o nome da variável");
-        consume(Token.TokenType.IDENTIFIER, "Esperado tipo da variável");
+        String type = consume(Token.TokenType.IDENTIFIER, "Esperado tipo da variável").lexeme();
+        Expression value = null;
         if (match(Token.TokenType.EQUAL)) {
-            parseExpression();
+            value = parseExpression();
         }
         consume(Token.TokenType.SEMICOLON, "Esperado ';' após a declaração da variável");
+        return new Declaration(name, type, value);
     }
 
-    private void parseForStatement() {
-        consume(Token.TokenType.IDENTIFIER, "Esperado nome da variável do loop 'for'");
+    private Statement parseForStatement() {
+        String variable = consume(Token.TokenType.IDENTIFIER, "Esperado nome da variável do loop 'for'").lexeme();
         consume(Token.TokenType.COLON, "Esperado ':' após a variável do loop");
-        consume(Token.TokenType.IDENTIFIER, "Esperado tipo da variável do loop");
-
-        // consume(Token.TokenType.IN, "Esperado 'in' para o intervalo do loop");
-        parseRangeExpression();
-        parseBlock();
+        String type = consume(Token.TokenType.IDENTIFIER, "Esperado tipo da variável do loop").lexeme();
+        consume(Token.TokenType.IN, "Esperado 'in' para o intervalo do loop");
+        Expression range = parseExpression();
+        Block body = parseBlock();
+        return new ForStatement(variable, type, range, body);
     }
 
-    private void parseIfStatement() {
+    private Statement parseIfStatement() {
         consume(Token.TokenType.L_PAREN, "Esperado '(' após 'if'");
-        parseExpression();
+        Expression condition = parseExpression();
         consume(Token.TokenType.R_PAREN, "Esperado ')' após a expressão do 'if'");
-        parseBlock();
-
-        // if (match(Token.TokenType.ELSE)) {
-        // if (match(Token.TokenType.IF)) {
-        // parseIfStatement(); // "else if"
-        // } else {
-        // parseBlock(); // "else" block
-        // }
-        // }
+        Block thenBranch = parseBlock();
+        Block elseBranch = null;
+        if (match(Token.TokenType.ELSE)) {
+            elseBranch = parseBlock();
+        }
+        return new IfStatement(condition, thenBranch, elseBranch);
     }
 
-    private void parseWhileStatement() {
+    private Statement parseWhileStatement() {
         consume(Token.TokenType.L_PAREN, "Esperado '(' após 'while'");
-        parseExpression();
+        Expression condition = parseExpression();
         consume(Token.TokenType.R_PAREN, "Esperado ')' após a expressão do 'while'");
-        parseBlock();
+        Block body = parseBlock();
+        return new WhileStatement(condition, body);
     }
 
-    private void parseReturnStatement() {
-        parseExpression();
+    private Statement parseReturnStatement() {
+        Expression value = parseExpression();
         consume(Token.TokenType.SEMICOLON, "Esperado ';' após a declaração 'return'");
+        return new ReturnStatement(value);
     }
 
-    private void parseDebugStatement() {
-        parseExpression();
+    private Statement parseDebugStatement() {
+        Expression value = parseExpression();
         consume(Token.TokenType.SEMICOLON, "Esperado ';' após o comando 'debug'");
+        return new DebugStatement(value);
     }
 
-    private void parseRangeExpression() {
-        consume(Token.TokenType.DOT_DOT, "Esperado '..' no intervalo");
-        consume(Token.TokenType.HASH, "Esperado '#' para denotar comprimento do vetor");
-        consume(Token.TokenType.IDENTIFIER, "Esperado nome do vetor após '#'");
+    private Expression parseExpression() {
+        return parseBinaryExpression(0);
     }
 
-    private void parseExpression() {
-        // Implementação da análise de expressões, incluindo operadores e literais
+    // Análise de operadores binários com precedência
+    private Expression parseBinaryExpression(int precedence) {
+        Expression left = parsePrimary();
+        while (!atEoF() && getPrecedence(peek().type()) >= precedence) {
+            Token operator = next();
+            Expression right = parseBinaryExpression(getPrecedence(operator.type()) + 1);
+            left = new BinaryExpression(left, operator.lexeme(), right);
+        }
+        return left;
+    }
+
+    private Expression parsePrimary() {
+        if (match(Token.TokenType.IDENTIFIER)) {
+            return new VariableExpression(previous().lexeme());
+        } else if (match(Token.TokenType.INTEGER) || match(Token.TokenType.FLOAT) || match(Token.TokenType.STRING)) {
+            return new Literal(previous().literal());
+        } else if (match(Token.TokenType.L_PAREN)) {
+            Expression expression = parseExpression();
+            consume(Token.TokenType.R_PAREN, "Esperado ')' após a expressão");
+            return expression;
+        }
+        throw new RuntimeException("Expressão inválida em " + peek().where());
+    }
+
+    private int getPrecedence(Token.TokenType type) {
+        return switch (type) {
+            case EQUAL_EQUAL, BANG_EQUAL -> 1;
+            case LESSER, GREATER, LESSER_EQUAL, GREATER_EQUAL -> 2;
+            case PLUS, MINUS -> 3;
+            case STAR, SLASH -> 4;
+            case HAT -> 5; // Exponenciação
+            default -> 0;
+        };
     }
 }

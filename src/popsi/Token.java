@@ -7,7 +7,7 @@ public record Token(String lexeme, TokenType type, FilePosition where, Object li
         COLON, SEMICOLON, HASH, COMMA,
 
         // tokens de um caractere que podem ser dois
-        EQUAL, PERCENT, BANG, PLUS, MINUS, SLASH, STAR, HAT, LESSER, GREATER, DOT,
+        EQUAL, PERCENT, BANG, PLUS, MINUS, SLASH, STAR, HAT, LESSER, GREATER, DOT, ARROW,
 
         // tokens de dois caracteres que podem ser um
         EQUAL_EQUAL, PERCENT_EQUAL, BANG_EQUAL, PLUS_EQUAL, MINUS_EQUAL, SLASH_EQUAL,
@@ -17,7 +17,7 @@ public record Token(String lexeme, TokenType type, FilePosition where, Object li
         OR, AND,
 
         // palavras reservadas
-        FN, LET, FOR, WHILE, RETURN, IF, DEBUG,
+        FN, LET, FOR, WHILE, RETURN, IF, DEBUG, ELSE, IN,
 
         // literais
         IDENTIFIER, INTEGER, FLOAT, STRING, CHAR,
