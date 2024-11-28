@@ -1,0 +1,63 @@
+<programa>  -> ( <funcao> )+ EOF
+
+<funcao>     -> "fn" <identificador> "(" <parametros>? ")" ("->" <tipo>)? <bloco>
+<parametros> -> <parametro> ("," <parametro>)*
+<parametro>  -> <identificador> ":" <tipo>
+
+<comando> -> <declaração>
+            | <expressão>
+
+<declaração> -> "let" <identificador> ":" <tipo> "=" <expressão>
+
+<expressão> -> <atribuição>
+             | <controle>
+             | <operacao>
+	     | <bloco>
+	     | "return" <expressao>
+	     | "debug" <expressao>
+
+<bloco> -> "{" comando (";" comando)* ";"? "}"
+
+<operacao>   -> <logic_or>
+<logic_or>   -> <logic_and> ( "||" <logic_and> )*
+<logic_and>  -> <equality> ( "&&" <equality> )*
+<equality>   -> <comparison> ( ( "!=" | "==" ) <comparison> )*
+<comparison> -> <termo> ( ( ">" | ">=" | "<" | "<=" ) <termo> )*
+<termo>      -> <fator> ( ( "-" | "+" ) <fator> )*
+<fator>      -> <exponent> ( ( "" | "/" ) <exponent> )*
+<exponent>   -> <unary> ("^" <exponent>)?
+<unary>      -> ("!" | "-") <unary> | <chamada>
+<chamada>    -> <primary> ( "(" argumentos? ")" )*
+<primary>    -> "true" | "false" | "nil" | <numero> | <string> | <caractere> | <identificador> | "(" <expressão> ")"
+
+<argumentos> -> <expressão> ("," <expressão>)*
+
+<controle> -> <if>
+            | "for" <identificador> ":" <tipo> "in" <intervalo> <bloco>
+            | "while" <expressão> <bloco>
+
+<if>       -> "if" <expressão> <bloco> ("else" ( <bloco> | <if> ))?
+<intervalo> -> <expressão> ".." <expressão>
+
+<atribuição> -> <identificador> ( "=" | "%=" | "+=" | "-=" | "*=" | "/=" | "^=" ) <expressão>
+
+<chamada_funcao> -> <identificador> "(" <argumentos> ")"
+<argumentos>     -> <expressao> ("," <expressao>)*
+
+<tipo> -> <identificador>
+
+<literal>     -> <numero> | <string> | <caractere>
+<numero>      -> <decimal> | <hexadecimal> | <binario> | <octal> | <float>
+<decimal>     -> <digito>+
+<hexadecimal> -> "0x" <hexdigito>+
+<binario>     -> "0b" <bindigito>+
+<octal>       -> "0o" <octdigito>+
+<float>       -> <decimal> "." <decimal>
+<string>      -> "\"" <caracteres> "\""
+<caractere>   -> "'" <simbolo> "'"
+<caracteres>  -> <caractere> <caracteres> | ε
+<simbolo>     -> qualquer caractere válido, exceto aspas simples
+<digito>      -> "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
+<hexdigito>   -> <digito> | "a"..."f" | "A"..."F"
+<bindigito>   -> "0" | "1"
+<octdigito>   -> "0"..."7"
