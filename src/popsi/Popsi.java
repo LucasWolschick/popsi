@@ -6,6 +6,8 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.List;
 
+import popsi.ast.AstPrinter;
+
 public class Popsi {
     public static void main(String... args) {
         if (args.length != 1) {
@@ -33,14 +35,11 @@ public class Popsi {
         var tokens = Lexer.lex(src);
         switch (tokens) {
             case Result.Success<List<Token>, ?> s -> {
-                for (var token : s.value()) {
-                    System.out.println(token);
-                }
                 System.out.println("[Análise sintática]");
                 var ast = Parser.parse(s.value());
                 switch (ast) {
                     case Result.Success<?, ?> s2 -> {
-                        System.out.println(s2.value());
+                        System.out.println(AstPrinter.print(s2.value()));
                     }
                     case Result.Error<?, List<CompilerError>> e -> {
                         for (var error : e.error()) {
