@@ -254,6 +254,15 @@ public class Lexer {
             case "else":
                 token(TokenType.ELSE);
                 break;
+            case "in":
+                token(TokenType.IN);
+                break;
+            case "true":
+                token(TokenType.TRUE);
+                break;
+            case "false":
+                token(TokenType.FALSE);
+                break;
             default:
                 token(TokenType.IDENTIFIER);
                 break;

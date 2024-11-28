@@ -28,7 +28,7 @@ TOKENS -> "(" | ")"
         | ">="
         | "||"
         | "&&"
-        | "fn" | "let" | "for" | "while" | "return" | "if" | "debug"
+        | "fn" | "let" | "for" | "while" | "return" | "if" | "debug" | "else" | "in" | "true" | "false"
         | IDENTIFIER
         | INTEGER
         | FLOAT
