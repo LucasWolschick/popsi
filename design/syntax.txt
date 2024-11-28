@@ -44,6 +44,6 @@
 <arg_list>      -> <expression> ("," <expression>)*
 
 <arg_list>      -> <expression> ("," <expression>)*
-<type>          -> IDENTIFIER
+<type>          -> "[" <type> "]" | IDENTIFIER
 
 <attrib_op>     -> "=" | "+=" | "-=" | "*=" | "/=" | "^="

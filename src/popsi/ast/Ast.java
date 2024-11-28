@@ -15,12 +15,12 @@ public sealed interface Ast {
     public static record Function(
             Token name, // Nome da função
             List<Parameter> parameters, // Lista de parâmetros
-            Optional<Token> returnType, // Tipo de retorno
+            Optional<Type> returnType, // Tipo de retorno
             Block body // Corpo da função
     ) implements Ast {
     }
 
     // Parâmetro -> identificador : tipo
-    public static record Parameter(Token name, Token type) implements Ast {
+    public static record Parameter(Token name, Type type) implements Ast {
     }
 }

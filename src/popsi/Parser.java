@@ -106,7 +106,7 @@ public class Parser {
         List<Parameter> parameters = parameters();
         consume(TokenType.R_PAREN, "Esperado ')' após os parâmetros");
 
-        Optional<Token> returnType = Optional.empty();
+        Optional<Type> returnType = Optional.empty();
         if (match(TokenType.ARROW)) {
             returnType = Optional.of(type());
         }
@@ -121,7 +121,7 @@ public class Parser {
             do {
                 Token name = consume(TokenType.IDENTIFIER, "Esperado nome do parâmetro");
                 consume(TokenType.COLON, "Esperado ':' após o nome do parâmetro");
-                Token type = type();
+                var type = type();
                 parameters.add(new Parameter(name, type));
             } while (match(TokenType.COMMA));
         }
@@ -163,7 +163,7 @@ public class Parser {
     private Declaration declaration() {
         Token name = consume(TokenType.IDENTIFIER, "Esperado nome da variável após 'let'");
         consume(TokenType.COLON, "Esperado ':' após o nome da variável");
-        Token type = type();
+        var type = type();
         consume(TokenType.EQUAL, "Esperado '=' após ':' e tipo da variável");
         Expression value = expression();
         consume(TokenType.SEMICOLON, "Esperado ';' após a declaração da variável");
@@ -211,7 +211,7 @@ public class Parser {
     private Expression forExpression() {
         Token variable = consume(TokenType.IDENTIFIER, "Esperado nome da variável após 'for'");
         consume(TokenType.COLON, "Esperado ':' após o nome da variável no loop 'for'");
-        Token type = type();
+        var type = type();
         consume(TokenType.IN, "Esperado 'in' para indicar o intervalo do loop 'for'");
         Expression range = expression();
         Block body = block();
@@ -368,7 +368,15 @@ public class Parser {
         return args;
     }
 
-    private Token type() {
-        return consume(TokenType.IDENTIFIER, "Esperado tipo");
+    private Type type() {
+        if (match(TokenType.IDENTIFIER)) {
+            return new Type.Named(previous());
+        } else if (match(TokenType.L_BRACKET)) {
+            Type elementType = type();
+            consume(TokenType.R_BRACKET, "Esperado ']' após o tipo da lista");
+            return new Type.List(elementType);
+        } else {
+            throw error("Esperado tipo");
+        }
     }
 }
