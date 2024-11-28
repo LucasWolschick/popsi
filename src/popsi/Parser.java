@@ -90,8 +90,9 @@ public class Parser {
     private void sincronizar() {
         next();
         while (!atEoF()) {
-            if (previous().type() == TokenType.SEMICOLON)
-                return;
+            if (peek().type() == TokenType.FN) {
+                break;
+            }
 
             // TODO: adicionar mais pontos de sincronização
             next();
@@ -164,15 +165,19 @@ public class Parser {
         Token name = consume(TokenType.IDENTIFIER, "Esperado nome da variável após 'let'");
         consume(TokenType.COLON, "Esperado ':' após o nome da variável");
         var type = type();
-        consume(TokenType.EQUAL, "Esperado '=' após ':' e tipo da variável");
-        Expression value = expression();
-        consume(TokenType.SEMICOLON, "Esperado ';' após a declaração da variável");
-        return new Declaration(name, type, value);
+        if (match(TokenType.EQUAL)) {
+            Expression value = expression();
+            consume(TokenType.SEMICOLON, "Esperado ';' após a declaração da variável");
+            return new Declaration(name, type, Optional.of(value));
+        } else {
+            consume(TokenType.SEMICOLON, "Esperado ';' após a declaração da variável");
+            return new Declaration(name, type, Optional.empty());
+        }
     }
 
     private Expression expression() {
         return switch (peek().type()) {
-            case TokenType.IF, TokenType.WHILE, TokenType.L_CURLY -> blockExpression();
+            case TokenType.IF, TokenType.WHILE, TokenType.FOR, TokenType.L_CURLY -> blockExpression();
             default -> blocklessExpression();
         };
     }
