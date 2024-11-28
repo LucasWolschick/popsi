@@ -4,12 +4,16 @@
 <parameters>    -> <parameter> ("," <parameter>)*
 <parameter>     -> IDENTIFIER ":" <type>
 
-<block>         -> "{" (<statement> ";")* <statement>? "}"
+<block>         -> "{" <statements>? "}"
+<statements>    -> <statement> ( <statement> )*
 
 <statement>     -> <declaration>
-                 | <expression>
+                 | <expr_stmt>
 
-<declaration>   -> "let" IDENTIFIER ":" <type> "=" <expression>
+<declaration>   -> "let" IDENTIFIER ":" <type> "=" <expression> ";"
+
+<expr_stmt>     -> <block_expr> ";"?
+                 | <blockless_expr> ";"?                                                // ; é opcional se o próximo token é } e obrigatório caso contrário
 
 <expression>    -> <block_expr>
                  | <blockless_expr>
@@ -37,7 +41,7 @@
 <factor>        -> <exponent> ( ( "" | "/" ) <exponent> )*
 <exponent>      -> <unary> ("^" <exponent>)?                                            // associativo pela direita
 <unary>         -> ("!" | "-" | "#") <unary> | <call>                                   // associativo pela direita
-<call>          -> <primary> ( "(" arg_list? ")" )*
+<call>          -> <primary> ( "(" arg_list? ")" | "[" <expression> "]" )*
 <primary>       -> "true" | "false" | NUMBER | STRING | IDENTIFIER
                  | "(" <expression> ")"
                  | <list>

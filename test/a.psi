@@ -1,0 +1,4 @@
+fn inverte_lista(lista: [i32]) {
+    {}
+    1;
+}

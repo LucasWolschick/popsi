@@ -59,6 +59,12 @@ public class Parser {
         return tokens.get(current);
     }
 
+    private Token peekNext() {
+        if (current + 1 >= tokens.size())
+            return tokens.get(tokens.size() - 1); // eof
+        return tokens.get(current + 1);
+    }
+
     private boolean match(TokenType... type) {
         for (var t : type) {
             if (peek().type() == t) {
@@ -72,7 +78,7 @@ public class Parser {
     private Token consume(TokenType type, String errorMessage) {
         if (match(type))
             return previous();
-        throw error(errorMessage);
+        throw error(errorMessage + " (encontrado: " + peek().lexeme() + ")");
     }
 
     private Token previous() {
@@ -84,9 +90,6 @@ public class Parser {
 
     private ParseError error(String message) {
         errors.add(new CompilerError(ErrorType.SYNTATIC, message, peek().where()));
-        // print stack trace
-        new RuntimeException().printStackTrace();
-        System.out.println("error at: " + peek());
         return new ParseError();
     }
 
@@ -132,35 +135,44 @@ public class Parser {
         return parameters;
     }
 
+    // variável de controle para possibilitar o último ';' opcional
+    // atualizada apenas nos statements
+    // lida apenas no block
+    // indica se o último statement consumiu um ';'
+    private boolean ateSemi = false;
+
     private Block block() {
-        consume(TokenType.L_CURLY, "Esperado '{' no início de um bloco de código");
-
-        var readSemicolon = false;
-        var statements = new ArrayList<Statement>();
-        while (peek().type() != TokenType.R_CURLY) {
-            readSemicolon = false;
-            statements.add(statement());
-            if (peek().type() == TokenType.SEMICOLON) {
-                readSemicolon = true;
-                next();
-            }
-        }
-        consume(TokenType.R_CURLY, "Esperado '}' no final de um bloco de código");
-
-        if (!readSemicolon && !statements.isEmpty()) {
-            var last = statements.removeLast();
-            return new Block(statements, Optional.of(last));
+        var open = consume(TokenType.L_CURLY, "Esperado '{' no início de um bloco de código");
+        List<Statement> stmts;
+        if (peek().type() == TokenType.R_CURLY) {
+            stmts = new ArrayList<>();
         } else {
-            return new Block(statements, Optional.empty());
+            stmts = statements();
         }
+        consume(TokenType.R_CURLY, "Esperado '}' para fechar o bloco de código aberto na linha " + open.where().line());
 
+        if (ateSemi || stmts.isEmpty()) {
+            return new Block(stmts, Optional.empty());
+        } else {
+            return new Block(stmts, Optional.of(stmts.removeLast()));
+        }
+    }
+
+    private List<Statement> statements() {
+        List<Statement> stmts = new ArrayList<>();
+        stmts.add(statement());
+        while (peek().type() != TokenType.R_CURLY && !atEoF()) {
+            stmts.add(statement());
+        }
+        return stmts;
     }
 
     private Statement statement() {
+        ateSemi = false;
         if (match(TokenType.LET)) {
             return declaration();
         } else {
-            return new ExpressionStatement(expression());
+            return exprStmt();
         }
     }
 
@@ -171,11 +183,35 @@ public class Parser {
         if (match(TokenType.EQUAL)) {
             Expression value = expression();
             consume(TokenType.SEMICOLON, "Esperado ';' após a declaração da variável");
+            ateSemi = true;
             return new Declaration(name, type, Optional.of(value));
         } else {
             consume(TokenType.SEMICOLON, "Esperado ';' após a declaração da variável");
+            ateSemi = true;
             return new Declaration(name, type, Optional.empty());
         }
+    }
+
+    private Statement exprStmt() {
+        return switch (peek().type()) {
+            case TokenType.IF, TokenType.WHILE, TokenType.FOR, TokenType.L_CURLY -> {
+                var block = blockExpression();
+                ateSemi = match(TokenType.SEMICOLON);
+                yield new ExpressionStatement(block);
+            }
+            default -> {
+                var expr = blocklessExpression();
+                if (peek().type() != TokenType.R_CURLY) {
+                    // ; é obrigatório
+                    consume(TokenType.SEMICOLON, "Esperado ';' após a expressão");
+                    ateSemi = true;
+                } else {
+                    // ; é opcional
+                    ateSemi = match(TokenType.SEMICOLON);
+                }
+                yield new ExpressionStatement(expr);
+            }
+        };
     }
 
     private Expression expression() {
@@ -316,7 +352,7 @@ public class Parser {
 
     private Expression factor() {
         Expression left = exponent();
-        while (match(TokenType.STAR, TokenType.SLASH)) {
+        while (match(TokenType.STAR, TokenType.SLASH, TokenType.PERCENT)) {
             Token operator = previous();
             Expression right = exponent();
             left = new BinaryExpression(left, operator, right);
@@ -345,10 +381,16 @@ public class Parser {
 
     private Expression call() {
         Expression expr = primary();
-        while (match(TokenType.L_PAREN)) {
-            List<Expression> args = argList(TokenType.R_PAREN);
-            consume(TokenType.R_PAREN, "Esperado ')'");
-            expr = new FunctionCall(expr, args);
+        while (match(TokenType.L_PAREN, TokenType.L_BRACKET)) {
+            if (previous().type() == TokenType.L_BRACKET) {
+                Expression place = expression();
+                consume(TokenType.R_BRACKET, "Esperado ']' após o índice");
+                expr = new ListAccess(expr, place);
+            } else {
+                List<Expression> args = argList(TokenType.R_PAREN);
+                consume(TokenType.R_PAREN, "Esperado ')'");
+                expr = new FunctionCall(expr, args);
+            }
         }
         return expr;
     }

@@ -35,6 +35,12 @@ public sealed interface Expression {
                         List<Expression> arguments) implements Expression {
         }
 
+        // Acesso a lista
+        public static record ListAccess(
+                        Expression target,
+                        Expression place) implements Expression {
+        }
+
         // Controle: Intervalos (a..b)
         public static record RangeExpression(
                         Expression start, // Início do intervalo

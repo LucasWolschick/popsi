@@ -46,6 +46,7 @@ public class AstPrinter {
                 parens(binary.operator().lexeme(), binary.left(), binary.right());
             case Expression.UnaryExpression unary -> parens(unary.operator().lexeme(), unary.operand());
             case Expression.FunctionCall call -> parens(visit(call.target()), call.arguments());
+            case Expression.ListAccess access -> parens("[]", access.target(), access.place());
             case Expression.RangeExpression range -> visit(range.start()) + ".." + visit(range.end());
             case Expression.ForExpression loop ->
                 parens("for", loop.variable(), loop.type(), loop.range(), loop.body());
@@ -54,7 +55,7 @@ public class AstPrinter {
             case Expression.WhileExpression whileExpr -> parens("while", whileExpr.condition(), whileExpr.body());
             case Expression.ReturnExpression returnExpr -> parens("return", returnExpr.value());
             case Expression.DebugExpression debugExpr -> parens("debug", debugExpr.value());
-            case Expression.Block block -> parens("block", block.statements());
+            case Expression.Block block -> parens("block", block.statements(), block.lastStatement());
             case Expression.ListExpression list -> parens("list", list.elements());
         };
     }

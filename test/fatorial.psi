@@ -5,7 +5,7 @@ fn fatorial(valor: i32) -> i64 {
         return 1;
     }
 
-    return valor * fatorial(valor - 1);
+    valor * fatorial(valor - 1)
 }
 
 fn main() {
