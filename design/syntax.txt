@@ -36,7 +36,7 @@
 <term>          -> <factor> ( ( "-" | "+" ) <factor> )*
 <factor>        -> <exponent> ( ( "" | "/" ) <exponent> )*
 <exponent>      -> <unary> ("^" <exponent>)?                                            // associativo pela direita
-<unary>         -> ("!" | "-") <unary> | <call>                                         // associativo pela direita
+<unary>         -> ("!" | "-" | "#") <unary> | <call>                                   // associativo pela direita
 <call>          -> <primary> ( "(" arg_list? ")" )*
 <primary>       -> "true" | "false" | NUMBER | STRING | IDENTIFIER
                  | "(" <expression> ")"

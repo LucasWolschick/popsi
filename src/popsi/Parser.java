@@ -278,7 +278,7 @@ public class Parser {
 
     private Expression equality() {
         Expression left = comparison();
-        while (match(TokenType.EQUAL_EQUAL) || match(TokenType.BANG_EQUAL)) {
+        while (match(TokenType.EQUAL_EQUAL, TokenType.BANG_EQUAL)) {
             Token operator = previous();
             Expression right = comparison();
             left = new BinaryExpression(left, operator, right);
@@ -288,8 +288,7 @@ public class Parser {
 
     private Expression comparison() {
         Expression left = term();
-        while (match(TokenType.LESSER) || match(TokenType.GREATER) ||
-                match(TokenType.LESSER_EQUAL) || match(TokenType.GREATER_EQUAL)) {
+        while (match(TokenType.LESSER, TokenType.GREATER, TokenType.LESSER_EQUAL, TokenType.GREATER_EQUAL)) {
             Token operator = previous();
             Expression right = term();
             left = new BinaryExpression(left, operator, right);
@@ -299,7 +298,7 @@ public class Parser {
 
     private Expression term() {
         Expression left = factor();
-        while (match(TokenType.PLUS) || match(TokenType.MINUS)) {
+        while (match(TokenType.PLUS, TokenType.MINUS)) {
             Token operator = previous();
             Expression right = factor();
             left = new BinaryExpression(left, operator, right);
@@ -309,7 +308,7 @@ public class Parser {
 
     private Expression factor() {
         Expression left = exponent();
-        while (match(TokenType.STAR) || match(TokenType.SLASH)) {
+        while (match(TokenType.STAR, TokenType.SLASH)) {
             Token operator = previous();
             Expression right = exponent();
             left = new BinaryExpression(left, operator, right);
@@ -328,7 +327,7 @@ public class Parser {
     }
 
     private Expression unary() {
-        if (match(TokenType.MINUS) || match(TokenType.BANG)) {
+        if (match(TokenType.MINUS, TokenType.BANG, TokenType.HASH)) {
             Token operator = previous();
             Expression operand = unary();
             return new UnaryExpression(operator, operand);
