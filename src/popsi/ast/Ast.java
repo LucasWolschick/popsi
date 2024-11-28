@@ -2,6 +2,8 @@ package popsi.ast;
 
 import java.util.List;
 
+import popsi.Token;
+
 public sealed interface Ast {
     // Programa -> Lista de Funções
     public static record Program(List<Function> functions) implements Ast {
@@ -9,14 +11,15 @@ public sealed interface Ast {
 
     // Função -> "fn" identificador (parametros)? -> tipo bloco
     public static record Function(
-            String name,
-            List<Parameter> parameters,
-            String returnType,
-            Block body) implements Ast {
+            Token name, // Nome da função
+            List<Parameter> parameters, // Lista de parâmetros
+            Token returnType, // Tipo de retorno
+            Block body // Corpo da função
+    ) implements Ast {
     }
 
     // Parâmetro -> identificador : tipo
-    public static record Parameter(String name, String type) implements Ast {
+    public static record Parameter(Token name, Token type) implements Ast {
     }
 
     // Bloco -> "{" comando (";" comando)* ";"? "}"
