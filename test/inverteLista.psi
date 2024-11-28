@@ -9,8 +9,8 @@ fn inverte_lista(lista: [i32]) -> [i32] {
         aux = vetor[start];
         vetor[start] = vetor[end];
         vetor[end] = aux;
-        start++;
-        end--;
+        start += 1;
+        end -= 1;
     }
 
     return vetor;

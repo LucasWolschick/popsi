@@ -22,6 +22,7 @@ public class AstPrinter {
             case Ast ast -> visitAst(ast);
             case Expression expression -> visitExpression(expression);
             case Statement statement -> visitStatement(statement);
+            case Type type -> visitType(type);
             default -> throw new IllegalArgumentException("Unexpected object: " + object);
         };
     }
@@ -66,18 +67,33 @@ public class AstPrinter {
         };
     }
 
+    private String visitType(Type type) {
+        return switch (type) {
+            case Type.Named named -> named.name().lexeme();
+            case Type.List list -> brackets(visitType(list.elementType()));
+        };
+    }
+
     // Helper
-    private String parens(Object... rest) {
+    private String parens(String name, Object... rest) {
         var builder = new StringBuilder();
-        builder.append("(");
+        builder.append("(").append(name);
         stringify(builder, rest);
         builder.append(")");
         return builder.toString();
     }
 
-    private String parens(String name, Object... rest) {
+    private String brackets(String name, Object... rest) {
         var builder = new StringBuilder();
-        builder.append("(").append(name);
+        builder.append("[").append(name);
+        stringify(builder, rest);
+        builder.append("]");
+        return builder.toString();
+    }
+
+    private String parens(Object... rest) {
+        var builder = new StringBuilder();
+        builder.append("(");
         stringify(builder, rest);
         builder.append(")");
         return builder.toString();
