@@ -84,6 +84,9 @@ public class Parser {
 
     private ParseError error(String message) {
         errors.add(new CompilerError(ErrorType.SYNTATIC, message, peek().where()));
+        // print stack trace
+        new RuntimeException().printStackTrace();
+        System.out.println("error at: " + peek());
         return new ParseError();
     }
 
@@ -343,7 +346,7 @@ public class Parser {
     private Expression call() {
         Expression expr = primary();
         while (match(TokenType.L_PAREN)) {
-            List<Expression> args = argList();
+            List<Expression> args = argList(TokenType.R_PAREN);
             consume(TokenType.R_PAREN, "Esperado ')'");
             expr = new FunctionCall(expr, args);
         }
@@ -355,6 +358,10 @@ public class Parser {
             return new Literal(previous());
         } else if (match(TokenType.IDENTIFIER)) {
             return new VariableExpression(previous());
+        } else if (match(TokenType.L_BRACKET)) {
+            List<Expression> elements = argList(TokenType.R_BRACKET);
+            consume(TokenType.R_BRACKET, "Esperado ']' após a lista");
+            return new ListExpression(elements);
         } else if (match(TokenType.L_PAREN)) {
             Expression expr = expression();
             consume(TokenType.R_PAREN, "Esperado ')'");
@@ -363,9 +370,9 @@ public class Parser {
         throw error("Expressão inválida encontrada");
     }
 
-    private List<Expression> argList() {
+    private List<Expression> argList(TokenType end) {
         List<Expression> args = new ArrayList<>();
-        if (peek().type() != TokenType.R_PAREN) {
+        if (peek().type() != end) {
             do {
                 args.add(expression());
             } while (match(TokenType.COMMA));

@@ -54,6 +54,7 @@ public class AstPrinter {
             case Expression.ReturnExpression returnExpr -> parens("return", returnExpr.value());
             case Expression.DebugExpression debugExpr -> parens("debug", debugExpr.value());
             case Expression.Block block -> parens("block", block.statements());
+            case Expression.ListExpression list -> parens("list", list.elements());
         };
     }
 

@@ -40,6 +40,9 @@
 <call>          -> <primary> ( "(" arg_list? ")" )*
 <primary>       -> "true" | "false" | NUMBER | STRING | IDENTIFIER
                  | "(" <expression> ")"
+                 | <list>
+
+<list>          -> "[" <arg_list>? "]"
 
 <arg_list>      -> <expression> ("," <expression>)*
 

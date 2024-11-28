@@ -14,6 +14,10 @@ public sealed interface Expression {
         public static record VariableExpression(Token name) implements Expression {
         }
 
+        // Lista
+        public static record ListExpression(List<Expression> elements) implements Expression {
+        }
+
         // Operação Binária -> expressão operador expressão
         public static record BinaryExpression(
                         Expression left,
