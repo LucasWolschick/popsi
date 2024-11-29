@@ -8,6 +8,7 @@ import popsi.ast.Ast.Function;
 import popsi.ast.Ast.Parameter;
 import popsi.ast.Ast.Program;
 import popsi.ast.Ast.Rec;
+import popsi.ast.Ast.Rec_field;
 import popsi.ast.Expression.BinaryExpression;
 import popsi.ast.Expression.Block;
 import popsi.ast.Expression.DebugExpression;
@@ -175,10 +176,10 @@ public class Parser {
     private Rec rec() {
         Token name = consume(TokenType.IDENTIFIER, "Esperado nome do record após 'rec'");
         consume(TokenType.L_CURLY, "Esperado '{' após o nome do record");
-        List<Statement> fields = new ArrayList<>();
+        List<Rec_field> fields = new ArrayList<>();
 
         while (peek().type() != TokenType.R_CURLY) {
-            fields.add(statement());
+            fields.add(rec_field());
         }
         consume(TokenType.R_CURLY, "Esperado '}' para fechar o record");
 
@@ -209,6 +210,15 @@ public class Parser {
         } else {
             return new Block(stmts, Optional.of(stmts.removeLast()));
         }
+    }
+
+    private Rec_field rec_field() {
+        consume(TokenType.LET, "Esperado 'let' para declarar um campo do record");
+        Token name = consume(TokenType.IDENTIFIER, "Esperado nome do campo do record");
+        consume(TokenType.COLON, "Esperado ':' após o nome do campo do record");
+        var type = type();
+        consume(TokenType.SEMICOLON, "Esperado ';' após a declaração do campo do record");
+        return new Rec_field(name, type);
     }
 
     private Statement statement() {
@@ -425,15 +435,17 @@ public class Parser {
 
     private Expression call() {
         Expression expr = primary();
-        while (match(TokenType.L_PAREN, TokenType.L_BRACKET)) {
+        while (match(TokenType.L_PAREN, TokenType.L_BRACKET, TokenType.DOT)) {
             if (previous().type() == TokenType.L_BRACKET) {
                 Expression place = expression();
                 consume(TokenType.R_BRACKET, "Esperado ']' após o índice");
                 expr = new ListAccess(expr, place);
-            } else {
+            } else if (previous().type() == TokenType.L_PAREN) {
                 List<Expression> args = argList(TokenType.R_PAREN);
                 consume(TokenType.R_PAREN, "Esperado ')'");
                 expr = new FunctionCall(expr, args);
+            } else {
+                call();
             }
         }
         return expr;

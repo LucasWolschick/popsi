@@ -22,10 +22,13 @@ public sealed interface Ast {
         // Record -> "record" identificador "{" campos "}"
         public static record Rec(
                         Token name,
-                        List<Statement> fields) implements Ast {
+                        List<Rec_field> fields) implements Ast {
         }
 
         // Parâmetro -> identificador : tipo
         public static record Parameter(Token name, Type type) implements Ast {
+        }
+
+        public static record Rec_field(Token name, Type type) implements Ast {
         }
 }

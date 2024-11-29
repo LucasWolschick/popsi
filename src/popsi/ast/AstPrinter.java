@@ -7,6 +7,7 @@ import popsi.ast.Ast.Function;
 import popsi.ast.Ast.Parameter;
 import popsi.ast.Ast.Program;
 import popsi.ast.Ast.Rec;
+import popsi.ast.Ast.Rec_field;
 
 public class AstPrinter {
     private AstPrinter() {
@@ -36,6 +37,7 @@ public class AstPrinter {
                         function.body());
             }
             case Parameter parameter -> parens(parameter.name().lexeme(), ":", parameter.type());
+            case Rec_field field -> parens("let", parens(field.name().lexeme(), field.type()));
         };
     }
 

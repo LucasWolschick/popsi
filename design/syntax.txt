@@ -4,13 +4,17 @@
 <parameters>    -> <parameter> ("," <parameter>)*
 <parameter>     -> IDENTIFIER ":" <type>
 
-<record>        -> "rec" IDENTIFIER <"{" <statements> "}">
+<rec>        -> "rec" IDENTIFIER <"{" <rec_fields> "}">
+
+<rec_fields>  -> <rec_field> ( <rec_field> )*
+<rec_field>   -> "let" IDENTIFIER ":" <type> ";"
 
 <block>         -> "{" <statement>* "}"
 <statements>    -> <statement> ( <statement> )*
 
 <statement>     -> <declaration>
                  | <expr_stmt>
+                 | <rec_field>
 
 <declaration>   -> "let" IDENTIFIER ":" <type> "=" <expression> ";"
 
@@ -43,7 +47,7 @@
 <factor>        -> <exponent> ( ( "" | "/" ) <exponent> )*
 <exponent>      -> <unary> ("^" <exponent>)?                                            // associativo pela direita
 <unary>         -> ("!" | "-" | "#") <unary> | <call>                                   // associativo pela direita
-<call>          -> <primary> ( "(" arg_list? ")" | "[" <expression> "]" )*
+<call>          -> <primary> ( "(" arg_list? ")" | "[" <expression> "]" | "." <call> )*
 <primary>       -> "true" | "false" | NUMBER | STRING | IDENTIFIER
                  | "(" <expression> ")"
                  | <list>
