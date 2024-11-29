@@ -2,11 +2,11 @@ package popsi.ast;
 
 import java.util.List;
 import java.util.Optional;
-
 import popsi.Token;
 import popsi.ast.Ast.Function;
 import popsi.ast.Ast.Parameter;
 import popsi.ast.Ast.Program;
+import popsi.ast.Ast.Rec;
 
 public class AstPrinter {
     private AstPrinter() {
@@ -29,7 +29,8 @@ public class AstPrinter {
 
     private String visitAst(Ast ast) {
         return switch (ast) {
-            case Program program -> parens("program", program.functions());
+            case Program program -> parens("program", program.records(), program.functions());
+            case Rec rec -> parens("rec", parens(rec.name().lexeme(), rec.fields()));
             case Function function -> {
                 yield parens("fn", parens(function.name().lexeme(), function.parameters()), "->", function.returnType(),
                         function.body());

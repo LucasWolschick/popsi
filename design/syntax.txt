@@ -1,8 +1,10 @@
-<program>       -> ( <function> )+ EOF
+<program>       -> ( <function> | <record>)* EOF
 
 <function>      -> "fn" IDENTIFIER "(" <parameters>? ")" ("->" <type>)? <block>
 <parameters>    -> <parameter> ("," <parameter>)*
 <parameter>     -> IDENTIFIER ":" <type>
+
+<record>        -> "rec" IDENTIFIER <"{" <statements> "}">
 
 <block>         -> "{" <statement>* "}"
 <statements>    -> <statement> ( <statement> )*

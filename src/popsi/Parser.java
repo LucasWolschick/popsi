@@ -1,14 +1,29 @@
 package popsi;
 
 import java.util.*;
-
-import popsi.ast.*;
-
-import static popsi.ast.Ast.*;
-import static popsi.ast.Statement.*;
-import static popsi.ast.Expression.*;
 import popsi.CompilerError.ErrorType;
 import popsi.Token.TokenType;
+import popsi.ast.*;
+import popsi.ast.Ast.Function;
+import popsi.ast.Ast.Parameter;
+import popsi.ast.Ast.Program;
+import popsi.ast.Ast.Rec;
+import popsi.ast.Expression.BinaryExpression;
+import popsi.ast.Expression.Block;
+import popsi.ast.Expression.DebugExpression;
+import popsi.ast.Expression.ForExpression;
+import popsi.ast.Expression.FunctionCall;
+import popsi.ast.Expression.IfExpression;
+import popsi.ast.Expression.ListAccess;
+import popsi.ast.Expression.ListExpression;
+import popsi.ast.Expression.Literal;
+import popsi.ast.Expression.RangeExpression;
+import popsi.ast.Expression.ReturnExpression;
+import popsi.ast.Expression.UnaryExpression;
+import popsi.ast.Expression.VariableExpression;
+import popsi.ast.Expression.WhileExpression;
+import popsi.ast.Statement.Declaration;
+import popsi.ast.Statement.ExpressionStatement;
 
 public class Parser {
     // Função principal
@@ -16,10 +31,16 @@ public class Parser {
         var parser = new Parser(tokens);
 
         List<Function> functions = new ArrayList<>();
+        List<Rec> records = new ArrayList<>();
         while (!parser.atEoF()) {
             try {
-                var func = parser.function();
-                functions.add(func);
+                if (parser.match(TokenType.REC)) {
+                    var rec = parser.rec();
+                    records.add(rec);
+                } else {
+                    var func = parser.function();
+                    functions.add(func);
+                }
             } catch (ParseError e) {
                 parser.recover_function();
             }
@@ -28,7 +49,7 @@ public class Parser {
         if (!parser.errors.isEmpty()) {
             return new Result.Error<>(parser.errors);
         } else {
-            return new Result.Success<>(new Program(functions));
+            return new Result.Success<>(new Program(functions, records));
         }
     }
 
@@ -149,6 +170,19 @@ public class Parser {
             } while (match(TokenType.COMMA));
         }
         return parameters;
+    }
+
+    private Rec rec() {
+        Token name = consume(TokenType.IDENTIFIER, "Esperado nome do record após 'rec'");
+        consume(TokenType.L_CURLY, "Esperado '{' após o nome do record");
+        List<Statement> fields = new ArrayList<>();
+
+        while (peek().type() != TokenType.R_CURLY) {
+            fields.add(statement());
+        }
+        consume(TokenType.R_CURLY, "Esperado '}' para fechar o record");
+
+        return new Rec(name, fields);
     }
 
     // variável de controle para possibilitar o último ';' opcional

@@ -2,7 +2,6 @@ package popsi;
 
 import java.util.ArrayList;
 import java.util.List;
-
 import popsi.CompilerError.ErrorType;
 import popsi.Token.TokenType;
 
@@ -232,6 +231,9 @@ public class Lexer {
         switch (lexeme) {
             case "fn":
                 token(TokenType.FN);
+                break;
+            case "rec":
+                token(TokenType.REC);
                 break;
             case "let":
                 token(TokenType.LET);
