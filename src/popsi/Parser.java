@@ -21,7 +21,7 @@ public class Parser {
                 var func = parser.function();
                 functions.add(func);
             } catch (ParseError e) {
-                parser.sincronizar();
+                parser.recover_function();
             }
         }
 
@@ -93,15 +93,31 @@ public class Parser {
         return new ParseError();
     }
 
-    private void sincronizar() {
+    private void recover_function() {
         next();
         while (!atEoF()) {
             if (peek().type() == TokenType.FN) {
                 break;
             }
 
-            // TODO: adicionar mais pontos de sincronização
             next();
+        }
+    }
+
+    private void recover_stmt() {
+        next();
+        while (!atEoF()) {
+            if (previous().type() == TokenType.SEMICOLON) {
+                break;
+            }
+
+            switch (peek().type()) {
+                case TokenType.LET, TokenType.IF, TokenType.WHILE, TokenType.FOR, TokenType.RETURN,
+                        TokenType.DEBUG:
+                    break;
+                default:
+                    next();
+            }
         }
     }
 
@@ -143,11 +159,14 @@ public class Parser {
 
     private Block block() {
         var open = consume(TokenType.L_CURLY, "Esperado '{' no início de um bloco de código");
-        List<Statement> stmts;
-        if (peek().type() == TokenType.R_CURLY) {
-            stmts = new ArrayList<>();
-        } else {
-            stmts = statements();
+        List<Statement> stmts = new ArrayList<>();
+        while (peek().type() != TokenType.R_CURLY) {
+            try {
+                stmts.add(statement());
+            } catch (Exception e) {
+                recover_stmt();
+                System.out.println("Recuperado, em: " + peek().lexeme());
+            }
         }
         consume(TokenType.R_CURLY, "Esperado '}' para fechar o bloco de código aberto na linha " + open.where().line());
 
@@ -156,15 +175,6 @@ public class Parser {
         } else {
             return new Block(stmts, Optional.of(stmts.removeLast()));
         }
-    }
-
-    private List<Statement> statements() {
-        List<Statement> stmts = new ArrayList<>();
-        stmts.add(statement());
-        while (peek().type() != TokenType.R_CURLY && !atEoF()) {
-            stmts.add(statement());
-        }
-        return stmts;
     }
 
     private Statement statement() {
@@ -409,7 +419,7 @@ public class Parser {
             consume(TokenType.R_PAREN, "Esperado ')'");
             return expr;
         }
-        throw error("Expressão inválida encontrada");
+        throw error("Esperada expressão, encontrado: " + peek().lexeme());
     }
 
     private List<Expression> argList(TokenType end) {

@@ -4,7 +4,7 @@
 <parameters>    -> <parameter> ("," <parameter>)*
 <parameter>     -> IDENTIFIER ":" <type>
 
-<block>         -> "{" <statements>? "}"
+<block>         -> "{" <statement>* "}"
 <statements>    -> <statement> ( <statement> )*
 
 <statement>     -> <declaration>
