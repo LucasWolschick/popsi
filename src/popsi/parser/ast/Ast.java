@@ -1,9 +1,10 @@
-package popsi.ast;
+package popsi.parser.ast;
 
 import java.util.List;
 import java.util.Optional;
-import popsi.Token;
-import popsi.ast.Expression.Block;
+
+import popsi.lexer.Token;
+import popsi.parser.ast.Expression.Block;
 
 public sealed interface Ast {
         // Programa -> Lista de Funções

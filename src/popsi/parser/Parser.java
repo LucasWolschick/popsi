@@ -1,32 +1,38 @@
-package popsi;
+package popsi.parser;
 
 import java.util.*;
+
+import popsi.CompilerError;
+import popsi.Result;
 import popsi.CompilerError.ErrorType;
-import popsi.Token.TokenType;
-import popsi.ast.*;
-import popsi.ast.Ast.Function;
-import popsi.ast.Ast.Parameter;
-import popsi.ast.Ast.Program;
-import popsi.ast.Ast.Rec;
-import popsi.ast.Ast.Rec_field;
-import popsi.ast.Expression.Argument;
-import popsi.ast.Expression.BinaryExpression;
-import popsi.ast.Expression.Block;
-import popsi.ast.Expression.DebugExpression;
-import popsi.ast.Expression.ForExpression;
-import popsi.ast.Expression.FunctionCall;
-import popsi.ast.Expression.IfExpression;
-import popsi.ast.Expression.ListAccess;
-import popsi.ast.Expression.ListExpression;
-import popsi.ast.Expression.Literal;
-import popsi.ast.Expression.RangeExpression;
-import popsi.ast.Expression.RecAccess;
-import popsi.ast.Expression.ReturnExpression;
-import popsi.ast.Expression.UnaryExpression;
-import popsi.ast.Expression.VariableExpression;
-import popsi.ast.Expression.WhileExpression;
-import popsi.ast.Statement.Declaration;
-import popsi.ast.Statement.ExpressionStatement;
+import popsi.Result.Error;
+import popsi.Result.Success;
+import popsi.lexer.Token;
+import popsi.lexer.Token.TokenType;
+import popsi.parser.ast.*;
+import popsi.parser.ast.Ast.Function;
+import popsi.parser.ast.Ast.Parameter;
+import popsi.parser.ast.Ast.Program;
+import popsi.parser.ast.Ast.Rec;
+import popsi.parser.ast.Ast.Rec_field;
+import popsi.parser.ast.Expression.Argument;
+import popsi.parser.ast.Expression.BinaryExpression;
+import popsi.parser.ast.Expression.Block;
+import popsi.parser.ast.Expression.DebugExpression;
+import popsi.parser.ast.Expression.ForExpression;
+import popsi.parser.ast.Expression.FunctionCall;
+import popsi.parser.ast.Expression.IfExpression;
+import popsi.parser.ast.Expression.ListAccess;
+import popsi.parser.ast.Expression.ListExpression;
+import popsi.parser.ast.Expression.Literal;
+import popsi.parser.ast.Expression.RangeExpression;
+import popsi.parser.ast.Expression.RecAccess;
+import popsi.parser.ast.Expression.ReturnExpression;
+import popsi.parser.ast.Expression.UnaryExpression;
+import popsi.parser.ast.Expression.VariableExpression;
+import popsi.parser.ast.Expression.WhileExpression;
+import popsi.parser.ast.Statement.Declaration;
+import popsi.parser.ast.Statement.ExpressionStatement;
 
 public class Parser {
     // Função principal

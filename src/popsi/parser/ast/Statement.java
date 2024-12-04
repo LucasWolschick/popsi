@@ -1,8 +1,8 @@
-package popsi.ast;
+package popsi.parser.ast;
 
 import java.util.Optional;
 
-import popsi.Token;
+import popsi.lexer.Token;
 
 public sealed interface Statement {
         // Declaração -> "let" identificador : tipo = expressão

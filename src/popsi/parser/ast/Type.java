@@ -1,6 +1,6 @@
-package popsi.ast;
+package popsi.parser.ast;
 
-import popsi.Token;
+import popsi.lexer.Token;
 
 public sealed interface Type {
     public record Named(Token name) implements Type {

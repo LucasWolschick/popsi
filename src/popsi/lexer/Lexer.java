@@ -1,9 +1,15 @@
-package popsi;
+package popsi.lexer;
 
 import java.util.ArrayList;
 import java.util.List;
+
+import popsi.CompilerError;
+import popsi.FilePosition;
+import popsi.Result;
 import popsi.CompilerError.ErrorType;
-import popsi.Token.TokenType;
+import popsi.Result.Error;
+import popsi.Result.Success;
+import popsi.lexer.Token.TokenType;
 
 public class Lexer {
     public static Result<List<Token>, List<CompilerError>> lex(String src) {

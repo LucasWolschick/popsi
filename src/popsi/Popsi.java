@@ -6,7 +6,10 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.List;
 
-import popsi.ast.AstPrinter;
+import popsi.lexer.Lexer;
+import popsi.lexer.Token;
+import popsi.parser.Parser;
+import popsi.parser.ast.AstPrinter;
 
 public class Popsi {
     public static void main(String... args) {

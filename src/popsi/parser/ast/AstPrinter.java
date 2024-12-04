@@ -1,13 +1,14 @@
-package popsi.ast;
+package popsi.parser.ast;
 
 import java.util.List;
 import java.util.Optional;
-import popsi.Token;
-import popsi.ast.Ast.Function;
-import popsi.ast.Ast.Parameter;
-import popsi.ast.Ast.Program;
-import popsi.ast.Ast.Rec;
-import popsi.ast.Ast.Rec_field;
+
+import popsi.lexer.Token;
+import popsi.parser.ast.Ast.Function;
+import popsi.parser.ast.Ast.Parameter;
+import popsi.parser.ast.Ast.Program;
+import popsi.parser.ast.Ast.Rec;
+import popsi.parser.ast.Ast.Rec_field;
 
 public class AstPrinter {
     private AstPrinter() {
@@ -60,10 +61,10 @@ public class AstPrinter {
             case Expression.DebugExpression debugExpr -> parens("debug", debugExpr.value());
             case Expression.Block block -> parens("block", block.statements(), block.lastStatement());
             case Expression.ListExpression list -> parens("list", list.elements());
-            case Expression.Argument arg -> 
+            case Expression.Argument arg ->
                 arg.label().isPresent()
-                ? arg.label().get().lexeme() + ": " + print(arg.value())
-                : print(arg.value());
+                        ? arg.label().get().lexeme() + ": " + print(arg.value())
+                        : print(arg.value());
             case Expression.RecAccess rec -> parens(".", rec.target(), rec.place());
         };
     }

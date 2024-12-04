@@ -1,9 +1,9 @@
-package popsi.ast;
+package popsi.parser.ast;
 
 import java.util.List;
 import java.util.Optional;
 
-import popsi.Token;
+import popsi.lexer.Token;
 
 public sealed interface Expression {
         // Literais: números, strings, caracteres
@@ -37,8 +37,9 @@ public sealed interface Expression {
 
         // Argumento
         public static record Argument(
-                Optional<Token> label,
-                Expression value) implements Expression {}
+                        Optional<Token> label,
+                        Expression value) implements Expression {
+        }
 
         // Acesso a lista
         public static record ListAccess(
@@ -48,9 +49,9 @@ public sealed interface Expression {
 
         // Acesso a rec
         public static record RecAccess(
-                Expression target,
-                Token place) implements Expression {
-                }
+                        Expression target,
+                        Token place) implements Expression {
+        }
 
         // Controle: Intervalos (a..b)
         public static record RangeExpression(

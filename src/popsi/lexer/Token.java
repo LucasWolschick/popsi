@@ -1,4 +1,6 @@
-package popsi;
+package popsi.lexer;
+
+import popsi.FilePosition;
 
 public record Token(String lexeme, TokenType type, FilePosition where, Object literal) {
     public static enum TokenType {
