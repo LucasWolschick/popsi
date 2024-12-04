@@ -60,6 +60,11 @@ public class AstPrinter {
             case Expression.DebugExpression debugExpr -> parens("debug", debugExpr.value());
             case Expression.Block block -> parens("block", block.statements(), block.lastStatement());
             case Expression.ListExpression list -> parens("list", list.elements());
+            case Expression.Argument arg -> 
+                arg.label().isPresent()
+                ? arg.label().get().lexeme() + ": " + print(arg.value())
+                : print(arg.value());
+            case Expression.RecAccess rec -> parens(".", rec.target(), rec.place());
         };
     }
 

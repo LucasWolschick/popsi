@@ -32,14 +32,25 @@ public sealed interface Expression {
         // Chamada de Função -> identificador ( argumentos? )
         public static record FunctionCall(
                         Expression target,
-                        List<Expression> arguments) implements Expression {
+                        List<Argument> arguments) implements Expression {
         }
+
+        // Argumento
+        public static record Argument(
+                Optional<Token> label,
+                Expression value) implements Expression {}
 
         // Acesso a lista
         public static record ListAccess(
                         Expression target,
                         Expression place) implements Expression {
         }
+
+        // Acesso a rec
+        public static record RecAccess(
+                Expression target,
+                Token place) implements Expression {
+                }
 
         // Controle: Intervalos (a..b)
         public static record RangeExpression(

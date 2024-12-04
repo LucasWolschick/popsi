@@ -47,16 +47,18 @@
 <factor>        -> <exponent> ( ( "" | "/" ) <exponent> )*
 <exponent>      -> <unary> ("^" <exponent>)?                                            // associativo pela direita
 <unary>         -> ("!" | "-" | "#") <unary> | <call>                                   // associativo pela direita
-<call>          -> <primary> ( "(" arg_list? ")" | "[" <expression> "]" | "." <call> )*
+<call>          -> <primary> ( "(" arg_list? ")" | "[" <expression> "]" | "." IDENTIFIER )*
 <primary>       -> "true" | "false" | NUMBER | STRING | IDENTIFIER
                  | "(" <expression> ")"
                  | <list>
 
-<list>          -> "[" <arg_list>? "]"
+<arg_list>      -> <argument> ("," <argument>)*
+<argument>      -> (IDENTIFIER ":")? <expression>
 
-<arg_list>      -> <expression> ("," <expression>)*
+<list>          -> "[" <list_items>? "]"
 
-<arg_list>      -> <expression> ("," <expression>)*
+<list_items>      -> <expression> ("," <expression>)*
+
 <type>          -> "[" <type> "]" | IDENTIFIER
 
 <attrib_op>     -> "=" | "+=" | "-=" | "*=" | "/=" | "^="

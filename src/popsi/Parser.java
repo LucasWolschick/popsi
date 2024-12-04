@@ -9,6 +9,7 @@ import popsi.ast.Ast.Parameter;
 import popsi.ast.Ast.Program;
 import popsi.ast.Ast.Rec;
 import popsi.ast.Ast.Rec_field;
+import popsi.ast.Expression.Argument;
 import popsi.ast.Expression.BinaryExpression;
 import popsi.ast.Expression.Block;
 import popsi.ast.Expression.DebugExpression;
@@ -19,6 +20,7 @@ import popsi.ast.Expression.ListAccess;
 import popsi.ast.Expression.ListExpression;
 import popsi.ast.Expression.Literal;
 import popsi.ast.Expression.RangeExpression;
+import popsi.ast.Expression.RecAccess;
 import popsi.ast.Expression.ReturnExpression;
 import popsi.ast.Expression.UnaryExpression;
 import popsi.ast.Expression.VariableExpression;
@@ -441,11 +443,12 @@ public class Parser {
                 consume(TokenType.R_BRACKET, "Esperado ']' após o índice");
                 expr = new ListAccess(expr, place);
             } else if (previous().type() == TokenType.L_PAREN) {
-                List<Expression> args = argList(TokenType.R_PAREN);
+                List<Argument> args = argList();
                 consume(TokenType.R_PAREN, "Esperado ')'");
                 expr = new FunctionCall(expr, args);
-            } else {
-                call();
+            } else if (previous().type() == TokenType.DOT) {
+                var place = consume(TokenType.IDENTIFIER, "Esperado nome do campo");
+                expr = new RecAccess(expr, place);
             }
         }
         return expr;
@@ -457,7 +460,7 @@ public class Parser {
         } else if (match(TokenType.IDENTIFIER)) {
             return new VariableExpression(previous());
         } else if (match(TokenType.L_BRACKET)) {
-            List<Expression> elements = argList(TokenType.R_BRACKET);
+            List<Expression> elements = listItems();
             consume(TokenType.R_BRACKET, "Esperado ']' após a lista");
             return new ListExpression(elements);
         } else if (match(TokenType.L_PAREN)) {
@@ -468,9 +471,33 @@ public class Parser {
         throw error("Esperada expressão, encontrado: " + peek().lexeme());
     }
 
-    private List<Expression> argList(TokenType end) {
+    private List<Argument> argList() {
+        List<Argument> args = new ArrayList<>();
+        if (peek().type() != TokenType.R_PAREN) {
+            do {
+                args.add(argument());
+            } while (match(TokenType.COMMA));
+        }
+        return args;
+    }
+
+    private Argument argument() {
+        if (peek().type() == TokenType.IDENTIFIER && peekNext().type() == TokenType.COLON) {
+            // labeled argument
+            var label = consume(TokenType.IDENTIFIER, "Esperado identificador no rótulo");
+            consume(TokenType.COLON, "Esperado : após o rótulo");
+            // expression
+            var expr = expression();
+            return new Argument(Optional.of(label), expr);
+        } else {
+            var expr = expression();
+            return new Argument(Optional.empty(), expr);
+        }
+    }
+
+    private List<Expression> listItems() {
         List<Expression> args = new ArrayList<>();
-        if (peek().type() != end) {
+        if (peek().type() != TokenType.R_BRACKET) {
             do {
                 args.add(expression());
             } while (match(TokenType.COMMA));
