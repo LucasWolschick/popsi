@@ -5,8 +5,6 @@ import java.util.*;
 import popsi.CompilerError;
 import popsi.Result;
 import popsi.CompilerError.ErrorType;
-import popsi.Result.Error;
-import popsi.Result.Success;
 import popsi.lexer.Token;
 import popsi.lexer.Token.TokenType;
 import popsi.parser.ast.*;

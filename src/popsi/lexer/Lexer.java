@@ -7,8 +7,6 @@ import popsi.CompilerError;
 import popsi.FilePosition;
 import popsi.Result;
 import popsi.CompilerError.ErrorType;
-import popsi.Result.Error;
-import popsi.Result.Success;
 import popsi.lexer.Token.TokenType;
 
 public class Lexer {
