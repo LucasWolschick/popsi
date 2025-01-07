@@ -13,24 +13,24 @@ import popsi.parser.ast.Ast.Parameter;
 import popsi.parser.ast.Ast.Program;
 import popsi.parser.ast.Ast.Rec;
 import popsi.parser.ast.Ast.Rec_field;
-import popsi.parser.ast.Expression.Argument;
-import popsi.parser.ast.Expression.BinaryExpression;
-import popsi.parser.ast.Expression.Block;
-import popsi.parser.ast.Expression.DebugExpression;
-import popsi.parser.ast.Expression.ForExpression;
-import popsi.parser.ast.Expression.FunctionCall;
-import popsi.parser.ast.Expression.IfExpression;
-import popsi.parser.ast.Expression.ListAccess;
-import popsi.parser.ast.Expression.ListExpression;
-import popsi.parser.ast.Expression.Literal;
-import popsi.parser.ast.Expression.RangeExpression;
-import popsi.parser.ast.Expression.RecAccess;
-import popsi.parser.ast.Expression.ReturnExpression;
-import popsi.parser.ast.Expression.UnaryExpression;
-import popsi.parser.ast.Expression.VariableExpression;
-import popsi.parser.ast.Expression.WhileExpression;
-import popsi.parser.ast.Statement.Declaration;
-import popsi.parser.ast.Statement.ExpressionStatement;
+import popsi.parser.ast.Expr.Argument;
+import popsi.parser.ast.Expr.BinaryExpression;
+import popsi.parser.ast.Expr.Block;
+import popsi.parser.ast.Expr.DebugExpression;
+import popsi.parser.ast.Expr.ForExpression;
+import popsi.parser.ast.Expr.FunctionCall;
+import popsi.parser.ast.Expr.IfExpression;
+import popsi.parser.ast.Expr.ListAccess;
+import popsi.parser.ast.Expr.ListExpression;
+import popsi.parser.ast.Expr.Literal;
+import popsi.parser.ast.Expr.RangeExpression;
+import popsi.parser.ast.Expr.RecAccess;
+import popsi.parser.ast.Expr.ReturnExpression;
+import popsi.parser.ast.Expr.UnaryExpression;
+import popsi.parser.ast.Expr.VariableExpression;
+import popsi.parser.ast.Expr.WhileExpression;
+import popsi.parser.ast.Stmt.Declaration;
+import popsi.parser.ast.Stmt.ExpressionStatement;
 
 public class Parser {
     // Função principal
@@ -157,7 +157,7 @@ public class Parser {
         List<Parameter> parameters = parameters();
         consume(TokenType.R_PAREN, "Esperado ')' após os parâmetros");
 
-        Optional<Type> returnType = Optional.empty();
+        Optional<TypeAst> returnType = Optional.empty();
         if (match(TokenType.ARROW)) {
             returnType = Optional.of(type());
         }
@@ -200,7 +200,7 @@ public class Parser {
 
     private Block block() {
         var open = consume(TokenType.L_CURLY, "Esperado '{' no início de um bloco de código");
-        List<Statement> stmts = new ArrayList<>();
+        List<Stmt> stmts = new ArrayList<>();
         while (peek().type() != TokenType.R_CURLY) {
             try {
                 stmts.add(statement());
@@ -227,7 +227,7 @@ public class Parser {
         return new Rec_field(name, type);
     }
 
-    private Statement statement() {
+    private Stmt statement() {
         ateSemi = false;
         if (match(TokenType.LET)) {
             return declaration();
@@ -241,7 +241,7 @@ public class Parser {
         consume(TokenType.COLON, "Esperado ':' após o nome da variável");
         var type = type();
         if (match(TokenType.EQUAL)) {
-            Expression value = expression();
+            Expr value = expression();
             consume(TokenType.SEMICOLON, "Esperado ';' após a declaração da variável");
             ateSemi = true;
             return new Declaration(name, type, Optional.of(value));
@@ -252,7 +252,7 @@ public class Parser {
         }
     }
 
-    private Statement exprStmt() {
+    private Stmt exprStmt() {
         return switch (peek().type()) {
             case TokenType.IF, TokenType.WHILE, TokenType.FOR, TokenType.L_CURLY -> {
                 var block = blockExpression();
@@ -274,14 +274,14 @@ public class Parser {
         };
     }
 
-    private Expression expression() {
+    private Expr expression() {
         return switch (peek().type()) {
             case TokenType.IF, TokenType.WHILE, TokenType.FOR, TokenType.L_CURLY -> blockExpression();
             default -> blocklessExpression();
         };
     }
 
-    private Expression blockExpression() {
+    private Expr blockExpression() {
         if (match(TokenType.IF)) {
             return ifExpression();
         } else if (peek().type() == TokenType.WHILE || peek().type() == TokenType.FOR) {
@@ -291,8 +291,8 @@ public class Parser {
         }
     }
 
-    private Expression ifExpression() {
-        Expression condition = expression();
+    private Expr ifExpression() {
+        Expr condition = expression();
         Block thenBranch = block();
         Optional<Block> elseBranch = Optional.empty();
         if (match(TokenType.ELSE)) {
@@ -301,7 +301,7 @@ public class Parser {
         return new IfExpression(condition, thenBranch, elseBranch);
     }
 
-    private Expression loop() {
+    private Expr loop() {
         if (match(TokenType.WHILE)) {
             return whileExpression();
         } else if (match(TokenType.FOR)) {
@@ -312,23 +312,23 @@ public class Parser {
         }
     }
 
-    private Expression forExpression() {
+    private Expr forExpression() {
         Token variable = consume(TokenType.IDENTIFIER, "Esperado nome da variável após 'for'");
         consume(TokenType.COLON, "Esperado ':' após o nome da variável no loop 'for'");
         var type = type();
         consume(TokenType.IN, "Esperado 'in' para indicar o intervalo do loop 'for'");
-        Expression range = expression();
+        Expr range = expression();
         Block body = block();
         return new ForExpression(variable, type, range, body);
     }
 
-    private Expression whileExpression() {
-        Expression condition = expression();
+    private Expr whileExpression() {
+        Expr condition = expression();
         Block body = block();
         return new WhileExpression(condition, body);
     }
 
-    private Expression blocklessExpression() {
+    private Expr blocklessExpression() {
         if (match(TokenType.RETURN)) {
             return new ReturnExpression(expression());
         } else if (match(TokenType.DEBUG)) {
@@ -338,112 +338,112 @@ public class Parser {
         }
     }
 
-    private Expression attribution() {
+    private Expr attribution() {
         var target = range();
         if (match(TokenType.EQUAL, TokenType.PERCENT_EQUAL, TokenType.PLUS_EQUAL, TokenType.MINUS_EQUAL,
                 TokenType.SLASH_EQUAL, TokenType.STAR_EQUAL, TokenType.HAT_EQUAL)) {
             Token operator = previous();
-            Expression value = attribution();
+            Expr value = attribution();
             return new BinaryExpression(target, operator, value);
         } else {
             return target;
         }
     }
 
-    private Expression range() {
-        Expression start = logicOr();
+    private Expr range() {
+        Expr start = logicOr();
         if (match(TokenType.DOT_DOT)) {
-            Expression end = logicOr();
+            Expr end = logicOr();
             return new RangeExpression(start, end);
         } else {
             return start;
         }
     }
 
-    private Expression logicOr() {
-        Expression left = logicAnd();
+    private Expr logicOr() {
+        Expr left = logicAnd();
         while (match(TokenType.OR)) {
             Token operator = previous();
-            Expression right = logicAnd();
+            Expr right = logicAnd();
             left = new BinaryExpression(left, operator, right);
         }
         return left;
     }
 
-    private Expression logicAnd() {
-        Expression left = equality();
+    private Expr logicAnd() {
+        Expr left = equality();
         while (match(TokenType.AND)) {
             Token operator = previous();
-            Expression right = equality();
+            Expr right = equality();
             left = new BinaryExpression(left, operator, right);
         }
         return left;
     }
 
-    private Expression equality() {
-        Expression left = comparison();
+    private Expr equality() {
+        Expr left = comparison();
         while (match(TokenType.EQUAL_EQUAL, TokenType.BANG_EQUAL)) {
             Token operator = previous();
-            Expression right = comparison();
+            Expr right = comparison();
             left = new BinaryExpression(left, operator, right);
         }
         return left;
     }
 
-    private Expression comparison() {
-        Expression left = term();
+    private Expr comparison() {
+        Expr left = term();
         while (match(TokenType.LESSER, TokenType.GREATER, TokenType.LESSER_EQUAL, TokenType.GREATER_EQUAL)) {
             Token operator = previous();
-            Expression right = term();
+            Expr right = term();
             left = new BinaryExpression(left, operator, right);
         }
         return left;
     }
 
-    private Expression term() {
-        Expression left = factor();
+    private Expr term() {
+        Expr left = factor();
         while (match(TokenType.PLUS, TokenType.MINUS)) {
             Token operator = previous();
-            Expression right = factor();
+            Expr right = factor();
             left = new BinaryExpression(left, operator, right);
         }
         return left;
     }
 
-    private Expression factor() {
-        Expression left = exponent();
+    private Expr factor() {
+        Expr left = exponent();
         while (match(TokenType.STAR, TokenType.SLASH, TokenType.PERCENT)) {
             Token operator = previous();
-            Expression right = exponent();
+            Expr right = exponent();
             left = new BinaryExpression(left, operator, right);
         }
         return left;
     }
 
-    private Expression exponent() {
-        Expression left = unary();
+    private Expr exponent() {
+        Expr left = unary();
         if (match(TokenType.HAT)) {
             Token operator = previous();
-            Expression right = exponent();
+            Expr right = exponent();
             return new BinaryExpression(left, operator, right);
         }
         return left;
     }
 
-    private Expression unary() {
+    private Expr unary() {
         if (match(TokenType.MINUS, TokenType.BANG, TokenType.HASH)) {
             Token operator = previous();
-            Expression operand = unary();
+            Expr operand = unary();
             return new UnaryExpression(operator, operand);
         }
         return call();
     }
 
-    private Expression call() {
-        Expression expr = primary();
+    private Expr call() {
+        Expr expr = primary();
         while (match(TokenType.L_PAREN, TokenType.L_BRACKET, TokenType.DOT)) {
             if (previous().type() == TokenType.L_BRACKET) {
-                Expression place = expression();
+                Expr place = expression();
                 consume(TokenType.R_BRACKET, "Esperado ']' após o índice");
                 expr = new ListAccess(expr, place);
             } else if (previous().type() == TokenType.L_PAREN) {
@@ -458,17 +458,17 @@ public class Parser {
         return expr;
     }
 
-    private Expression primary() {
+    private Expr primary() {
         if (match(TokenType.INTEGER, TokenType.FLOAT, TokenType.TRUE, TokenType.FALSE, TokenType.STRING)) {
             return new Literal(previous());
         } else if (match(TokenType.IDENTIFIER)) {
             return new VariableExpression(previous());
         } else if (match(TokenType.L_BRACKET)) {
-            List<Expression> elements = listItems();
+            List<Expr> elements = listItems();
             consume(TokenType.R_BRACKET, "Esperado ']' após a lista");
             return new ListExpression(elements);
         } else if (match(TokenType.L_PAREN)) {
-            Expression expr = expression();
+            Expr expr = expression();
             consume(TokenType.R_PAREN, "Esperado ')'");
             return expr;
         }
@@ -499,8 +499,8 @@ public class Parser {
         }
     }
 
-    private List<Expression> listItems() {
-        List<Expression> args = new ArrayList<>();
+    private List<Expr> listItems() {
+        List<Expr> args = new ArrayList<>();
         if (peek().type() != TokenType.R_BRACKET) {
             do {
                 args.add(expression());
@@ -509,13 +509,13 @@ public class Parser {
         return args;
     }
 
-    private Type type() {
+    private TypeAst type() {
         if (match(TokenType.IDENTIFIER)) {
-            return new Type.Named(previous());
+            return new TypeAst.Named(previous());
         } else if (match(TokenType.L_BRACKET)) {
-            Type elementType = type();
+            TypeAst elementType = type();
             consume(TokenType.R_BRACKET, "Esperado ']' após o tipo da lista");
-            return new Type.List(elementType);
+            return new TypeAst.List(elementType);
         } else {
             throw error("Esperado tipo");
         }

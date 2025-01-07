@@ -22,9 +22,9 @@ public class AstPrinter {
     private String visit(Object object) {
         return switch (object) {
             case Ast ast -> visitAst(ast);
-            case Expression expression -> visitExpression(expression);
-            case Statement statement -> visitStatement(statement);
-            case Type type -> visitType(type);
+            case Expr expression -> visitExpression(expression);
+            case Stmt statement -> visitStatement(statement);
+            case TypeAst type -> visitType(type);
             default -> throw new IllegalArgumentException("Unexpected object: " + object);
         };
     }
@@ -42,45 +42,45 @@ public class AstPrinter {
         };
     }
 
-    private String visitExpression(Expression expression) {
+    private String visitExpression(Expr expression) {
         return switch (expression) {
-            case Expression.Literal literal -> literal.value().lexeme();
-            case Expression.VariableExpression variable -> variable.name().lexeme();
-            case Expression.BinaryExpression binary ->
+            case Expr.Literal literal -> literal.value().lexeme();
+            case Expr.VariableExpression variable -> variable.name().lexeme();
+            case Expr.BinaryExpression binary ->
                 parens(binary.operator().lexeme(), binary.left(), binary.right());
-            case Expression.UnaryExpression unary -> parens(unary.operator().lexeme(), unary.operand());
-            case Expression.FunctionCall call -> parens(visit(call.target()), call.arguments());
-            case Expression.ListAccess access -> parens("[]", access.target(), access.place());
-            case Expression.RangeExpression range -> visit(range.start()) + ".." + visit(range.end());
-            case Expression.ForExpression loop ->
+            case Expr.UnaryExpression unary -> parens(unary.operator().lexeme(), unary.operand());
+            case Expr.FunctionCall call -> parens(visit(call.target()), call.arguments());
+            case Expr.ListAccess access -> parens("[]", access.target(), access.place());
+            case Expr.RangeExpression range -> visit(range.start()) + ".." + visit(range.end());
+            case Expr.ForExpression loop ->
                 parens("for", loop.variable(), loop.type(), loop.range(), loop.body());
-            case Expression.IfExpression ifExpr ->
+            case Expr.IfExpression ifExpr ->
                 parens("if", ifExpr.condition(), ifExpr.thenBranch(), ifExpr.elseBranch());
-            case Expression.WhileExpression whileExpr -> parens("while", whileExpr.condition(), whileExpr.body());
-            case Expression.ReturnExpression returnExpr -> parens("return", returnExpr.value());
-            case Expression.DebugExpression debugExpr -> parens("debug", debugExpr.value());
-            case Expression.Block block -> parens("block", block.statements(), block.lastStatement());
-            case Expression.ListExpression list -> parens("list", list.elements());
-            case Expression.Argument arg ->
+            case Expr.WhileExpression whileExpr -> parens("while", whileExpr.condition(), whileExpr.body());
+            case Expr.ReturnExpression returnExpr -> parens("return", returnExpr.value());
+            case Expr.DebugExpression debugExpr -> parens("debug", debugExpr.value());
+            case Expr.Block block -> parens("block", block.statements(), block.lastStatement());
+            case Expr.ListExpression list -> parens("list", list.elements());
+            case Expr.Argument arg ->
                 arg.label().isPresent()
                         ? arg.label().get().lexeme() + ": " + print(arg.value())
                         : print(arg.value());
-            case Expression.RecAccess rec -> parens(".", rec.target(), rec.place());
+            case Expr.RecAccess rec -> parens(".", rec.target(), rec.place());
         };
     }
 
-    private String visitStatement(Statement statement) {
+    private String visitStatement(Stmt statement) {
         return switch (statement) {
-            case Statement.ExpressionStatement expr -> visitExpression(expr.expression());
-            case Statement.Declaration let ->
+            case Stmt.ExpressionStatement expr -> visitExpression(expr.expression());
+            case Stmt.Declaration let ->
                 parens("let", parens(parens(let.name().lexeme(), let.type())), let.value());
         };
     }
 
-    private String visitType(Type type) {
+    private String visitType(TypeAst type) {
         return switch (type) {
-            case Type.Named named -> named.name().lexeme();
-            case Type.List list -> brackets(visitType(list.elementType()));
+            case TypeAst.Named named -> named.name().lexeme();
+            case TypeAst.List list -> brackets(visitType(list.elementType()));
         };
     }
 

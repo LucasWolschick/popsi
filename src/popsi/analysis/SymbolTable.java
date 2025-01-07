@@ -19,8 +19,4 @@ public class SymbolTable {
         function = new HashMap<>();
         types = new HashMap<>();
     }
-
-    public Id function() {
-        throw new RuntimeException("TODO");
-    }
 }

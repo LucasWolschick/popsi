@@ -5,16 +5,19 @@ import java.util.List;
 
 import popsi.CompilerError;
 import popsi.Result;
-import popsi.parser.ast.Ast.*;
-import popsi.parser.ast.Statement;
-import popsi.parser.ast.Statement.*;
+import popsi.analysis.typed_ast.TypedExpr;
+import popsi.analysis.typed_ast.TypedAst;
+import popsi.analysis.typed_ast.TypedStmt;
+import popsi.parser.ast.Expr;
+import popsi.parser.ast.Ast;
+import popsi.parser.ast.Stmt;
 
 public class Analyser {
-    public static Result<SymbolTable, List<CompilerError>> analyse(Program program) {
+    public static Result<TypedAst.Program, List<CompilerError>> analyse(Ast.Program program) {
         var analyser = new Analyser();
-        analyser.visit(program);
+        var typedProgram = analyser.program(program);
         if (analyser.errors.isEmpty()) {
-            return new Result.Success<>(analyser.table);
+            return new Result.Success<>(typedProgram);
         } else {
             return new Result.Error<>(analyser.errors);
         }
@@ -28,42 +31,28 @@ public class Analyser {
         table = new SymbolTable();
     }
 
-    private void visit(Program program) {
-        // on-demand semantic analysis
-        for (var fn : program.functions()) {
-            function(fn);
-        }
+    private TypedAst.Program program(Ast.Program program) {
+        // TODO
+        throw new RuntimeException("Not implemented");
     }
 
-    private void function(Function fn) {
-        // TODO: insert function into symbol table
-        table.function(fn);
-
-        // analyse function statements
-        for (var stmt : fn.body().statements()) {
-            statement(stmt);
-        }
-        if (fn.body().lastStatement().isPresent()) {
-            statement(fn.body().lastStatement().get());
-        }
+    private TypedAst.Function function(Ast.Function function) {
+        // TODO
+        throw new RuntimeException("Not implemented");
     }
 
-    private void statement(Statement stmt) {
-        switch (stmt) {
-            case Statement.Declaration decl:
-                declaration(decl);
-                break;
-            case Statement.ExpressionStatement exprStmt:
-                expressionStatement(exprStmt);
-                break;
-        }
+    private TypedAst.Rec rec(Ast.Rec rec) {
+        // TODO
+        throw new RuntimeException("Not implemented");
     }
 
-    private void declaration(Declaration decl) {
-
+    private TypedStmt statement(Stmt stmt) {
+        // TODO
+        throw new RuntimeException("Not implemented");
     }
 
-    private void expressionStatement(ExpressionStatement stmt) {
-
+    private TypedExpr expression(Expr expr) {
+        // TODO
+        throw new RuntimeException("Not implemented");
     }
 }

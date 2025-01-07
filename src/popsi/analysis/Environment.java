@@ -8,6 +8,19 @@ public class Environment {
     private HashMap<String, TypeEnvEntry> types;
     private Optional<Environment> enclosing;
 
+    public static sealed interface EnvEntry {
+        public record Function() implements EnvEntry {
+        }
+
+        public record Local() implements EnvEntry {
+        }
+    }
+
+    public static sealed interface TypeEnvEntry {
+        public record Function() implements TypeEnvEntry {
+        }
+    }
+
     public Environment() {
         this.values = new HashMap<>();
         this.enclosing = Optional.empty();

@@ -4,7 +4,7 @@ import java.util.List;
 import java.util.Optional;
 
 import popsi.lexer.Token;
-import popsi.parser.ast.Expression.Block;
+import popsi.parser.ast.Expr.Block;
 
 public sealed interface Ast {
         // Programa -> Lista de Funções
@@ -15,7 +15,7 @@ public sealed interface Ast {
         public static record Function(
                         Token name, // Nome da função
                         List<Parameter> parameters, // Lista de parâmetros
-                        Optional<Type> returnType, // Tipo de retorno
+                        Optional<TypeAst> returnType, // Tipo de retorno
                         Block body // Corpo da função
         ) implements Ast {
         }
@@ -27,9 +27,9 @@ public sealed interface Ast {
         }
 
         // Parâmetro -> identificador : tipo
-        public static record Parameter(Token name, Type type) implements Ast {
+        public static record Parameter(Token name, TypeAst type) implements Ast {
         }
 
-        public static record Rec_field(Token name, Type type) implements Ast {
+        public static record Rec_field(Token name, TypeAst type) implements Ast {
         }
 }
