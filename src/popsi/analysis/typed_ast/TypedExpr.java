@@ -3,11 +3,15 @@ package popsi.analysis.typed_ast;
 import java.util.List;
 import java.util.Optional;
 
+import popsi.FilePosition;
 import popsi.analysis.Type;
 import popsi.lexer.Token;
 import popsi.parser.ast.TypeAst;
 
 public sealed interface TypedExpr {
+        /// O tipo da expressão, quando avaliada.
+        public Type type();
+
         // Literais: números, strings, caracteres
         public static record Literal(Token value, Type type) implements TypedExpr {
         }
@@ -17,7 +21,8 @@ public sealed interface TypedExpr {
         }
 
         // Lista
-        public static record ListExpression(List<TypedExpr> elements, Type type) implements TypedExpr {
+        public static record ListExpression(FilePosition position, List<TypedExpr> elements, Type type)
+                        implements TypedExpr {
         }
 
         // Operação Binária -> expressão operador expressão
@@ -55,13 +60,6 @@ public sealed interface TypedExpr {
         public static record RecAccess(
                         TypedExpr target,
                         Token place, Type type) implements TypedExpr {
-        }
-
-        // Controle: Intervalos (a..b)
-        public static record RangeExpression(
-                        TypedExpr start, // Início do intervalo
-                        TypedExpr end, // Fim do intervalo
-                        Type type) implements TypedExpr {
         }
 
         // Loop "for"

@@ -3,6 +3,7 @@ package popsi.parser.ast;
 import java.util.List;
 import java.util.Optional;
 
+import popsi.FilePosition;
 import popsi.lexer.Token;
 
 public sealed interface Expr {
@@ -15,7 +16,7 @@ public sealed interface Expr {
         }
 
         // Lista
-        public static record ListExpression(List<Expr> elements) implements Expr {
+        public static record ListExpression(FilePosition position, List<Expr> elements) implements Expr {
         }
 
         // Operação Binária -> expressão operador expressão
@@ -51,13 +52,6 @@ public sealed interface Expr {
         public static record RecAccess(
                         Expr target,
                         Token place) implements Expr {
-        }
-
-        // Controle: Intervalos (a..b)
-        public static record RangeExpression(
-                        Expr start, // Início do intervalo
-                        Expr end // Fim do intervalo
-        ) implements Expr {
         }
 
         // Loop "for"

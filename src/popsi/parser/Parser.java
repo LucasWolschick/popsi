@@ -5,6 +5,7 @@ import java.util.*;
 import popsi.CompilerError;
 import popsi.Result;
 import popsi.CompilerError.ErrorType;
+import popsi.FilePosition;
 import popsi.lexer.Token;
 import popsi.lexer.Token.TokenType;
 import popsi.parser.ast.*;
@@ -23,7 +24,6 @@ import popsi.parser.ast.Expr.IfExpression;
 import popsi.parser.ast.Expr.ListAccess;
 import popsi.parser.ast.Expr.ListExpression;
 import popsi.parser.ast.Expr.Literal;
-import popsi.parser.ast.Expr.RangeExpression;
 import popsi.parser.ast.Expr.RecAccess;
 import popsi.parser.ast.Expr.ReturnExpression;
 import popsi.parser.ast.Expr.UnaryExpression;
@@ -354,7 +354,7 @@ public class Parser {
         Expr start = logicOr();
         if (match(TokenType.DOT_DOT)) {
             Expr end = logicOr();
-            return new RangeExpression(start, end);
+            return new BinaryExpression(start, previous(), end);
         } else {
             return start;
         }
@@ -464,9 +464,10 @@ public class Parser {
         } else if (match(TokenType.IDENTIFIER)) {
             return new VariableExpression(previous());
         } else if (match(TokenType.L_BRACKET)) {
+            FilePosition position = previous().where();
             List<Expr> elements = listItems();
             consume(TokenType.R_BRACKET, "Esperado ']' após a lista");
-            return new ListExpression(elements);
+            return new ListExpression(position, elements);
         } else if (match(TokenType.L_PAREN)) {
             Expr expr = expression();
             consume(TokenType.R_PAREN, "Esperado ')'");

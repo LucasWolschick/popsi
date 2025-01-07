@@ -51,7 +51,6 @@ public class AstPrinter {
             case Expr.UnaryExpression unary -> parens(unary.operator().lexeme(), unary.operand());
             case Expr.FunctionCall call -> parens(visit(call.target()), call.arguments());
             case Expr.ListAccess access -> parens("[]", access.target(), access.place());
-            case Expr.RangeExpression range -> visit(range.start()) + ".." + visit(range.end());
             case Expr.ForExpression loop ->
                 parens("for", loop.variable(), loop.type(), loop.range(), loop.body());
             case Expr.IfExpression ifExpr ->
