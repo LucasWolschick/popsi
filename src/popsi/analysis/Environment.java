@@ -58,4 +58,8 @@ public class Environment {
     public void putType(String key, TypeEnvEntry entry) {
         types.put(key, entry);
     }
+
+    public Optional<Environment> enclosing() {
+        return enclosing;
+    }
 }
