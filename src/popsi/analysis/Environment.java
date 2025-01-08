@@ -9,7 +9,10 @@ public class Environment {
     private Optional<Environment> enclosing;
 
     public static sealed interface EnvEntry {
-        public record Function() implements EnvEntry {
+        public record Function(Type type) implements EnvEntry {
+            public Type type() {
+                return type; // Getter para acessar o campo
+            }
         }
 
         public record Local() implements EnvEntry {

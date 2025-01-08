@@ -54,6 +54,18 @@ public class Analyser {
         return new TypedAst.Program(functions, records, table);
     }
 
+    private TypedExpr.Block block(Expr.Block block) {
+        var typedStatements = new ArrayList<TypedStmt>();
+        for (var statement : block.statements()) {
+            typedStatements.add(statement(statement));
+        }
+
+        var lastTypedStatement = block.lastStatement().map(this::statement);
+        Type blockType = lastTypedStatement.map(TypedStmt::type).orElse(Type.UNIT);
+
+        return new TypedExpr.Block(typedStatements, lastTypedStatement, blockType);
+    }
+
     private TypedAst.Function function(Ast.Function function) {
         var parameters = new ArrayList<TypedAst.Parameter>();
         for (var param : function.parameters()) {
@@ -61,14 +73,14 @@ public class Analyser {
             parameters.add(new TypedAst.Parameter(param.name(), param.type(), type));
         }
 
-        var returnType = function.returnType(); // Mantém o tipo Optional<TypeAst>
+        var returnType = function.returnType();
 
         environment = new Environment(environment);
-        var body = function.body(); // Mantém o tipo popsi.parser.ast.Expr.Block
+        block(function.body());
         environment = environment.enclosing().orElse(null);
 
-        return new TypedAst.Function(function.name(), parameters, returnType, body,
-                returnType.map(this::resolveType).orElse(Type.VOID));
+        return new TypedAst.Function(function.name(), parameters, returnType, function.body(),
+                returnType.map(this::resolveType).orElse(Type.UNIT));
     }
 
     private TypedAst.Rec rec(Ast.Rec rec) {
@@ -109,18 +121,13 @@ public class Analyser {
     private TypedExpr expression(Expr expr) {
         switch (expr) {
             case Expr.Literal(Token value): {
-                switch (value.type()) {
-                    case TokenType.INTEGER:
-                        return new TypedExpr.Literal(value, Type.I_LITERAL);
-                    case TokenType.FLOAT:
-                        return new TypedExpr.Literal(value, Type.F_LITERAL);
-                    case TokenType.STRING:
-                        return new TypedExpr.Literal(value, Type.STR);
-                    case TokenType.CHAR:
-                        return new TypedExpr.Literal(value, Type.CHAR);
-                    default:
-                        throw new RuntimeException("Unexpected token type: " + value.type());
-                }
+                return switch (value.type()) {
+                    case TokenType.INTEGER -> new TypedExpr.Literal(value, Type.I_LITERAL);
+                    case TokenType.FLOAT -> new TypedExpr.Literal(value, Type.F_LITERAL);
+                    case TokenType.STRING -> new TypedExpr.Literal(value, Type.STR);
+                    case TokenType.CHAR -> new TypedExpr.Literal(value, Type.CHAR);
+                    default -> throw new RuntimeException("Unexpected token type: " + value.type());
+                };
             }
 
             case Expr.VariableExpression(Token name): {
@@ -129,7 +136,10 @@ public class Analyser {
                     error(name, "Uso de variável não declarada: '" + name.lexeme() + "'");
                     return new TypedExpr.VariableExpression(name, Type.INVALID);
                 }
-                return new TypedExpr.VariableExpression(name, Type.UNKNOWN); // Ajustar tipo real
+                return new TypedExpr.VariableExpression(name,
+                        entry.get() instanceof Environment.EnvEntry.Local ? Type.UNKNOWN
+                                : ((Environment.EnvEntry.Function) entry.get()).type());
+
             }
 
             case Expr.ListExpression(FilePosition position, List<Expr> elements): {
@@ -160,38 +170,23 @@ public class Analyser {
                     error(operator.where(), "Tipos incompatíveis para operação binária.");
                 }
 
-                switch (operator.type()) {
-                    case TokenType.PLUS:
-                    case TokenType.MINUS:
-                    case TokenType.STAR:
-                    case TokenType.SLASH:
-                        return new TypedExpr.BinaryExpression(leftExpr, operator, rightExpr, leftExpr.type());
-
-                    case TokenType.EQUAL_EQUAL:
-                    case TokenType.BANG_EQUAL:
-                    case TokenType.LESSER:
-                    case TokenType.LESSER_EQUAL:
-                    case TokenType.GREATER:
-                    case TokenType.GREATER_EQUAL:
-                        return new TypedExpr.BinaryExpression(leftExpr, operator, rightExpr, Type.BOOLEAN);
-
-                    default:
-                        throw new RuntimeException("Operação não suportada: " + operator.type());
-                }
+                Type resultType = switch (operator.type()) {
+                    case TokenType.PLUS, TokenType.MINUS, TokenType.STAR, TokenType.SLASH -> leftExpr.type();
+                    case TokenType.EQUAL_EQUAL, TokenType.BANG_EQUAL, TokenType.LESSER, TokenType.LESSER_EQUAL,
+                            TokenType.GREATER, TokenType.GREATER_EQUAL ->
+                        Type.BOOLEAN;
+                    default -> throw new RuntimeException("Operação não suportada: " + operator.type());
+                };
+                return new TypedExpr.BinaryExpression(leftExpr, operator, rightExpr, resultType);
             }
 
             case Expr.UnaryExpression(Token operator, Expr operand): {
                 var operandExpr = expression(operand);
-                switch (operator.type()) {
-                    case TokenType.BANG:
-                        return new TypedExpr.UnaryExpression(operator, operandExpr, Type.BOOLEAN);
-
-                    case TokenType.MINUS:
-                        return new TypedExpr.UnaryExpression(operator, operandExpr, operandExpr.type());
-
-                    default:
-                        throw new RuntimeException("Operação unária não suportada: " + operator.type());
-                }
+                return switch (operator.type()) {
+                    case TokenType.BANG -> new TypedExpr.UnaryExpression(operator, operandExpr, Type.BOOLEAN);
+                    case TokenType.MINUS -> new TypedExpr.UnaryExpression(operator, operandExpr, operandExpr.type());
+                    default -> throw new RuntimeException("Operação unária não suportada: " + operator.type());
+                };
             }
 
             case Expr.FunctionCall(Expr target, List<Expr.Argument> arguments): {
@@ -207,10 +202,8 @@ public class Analyser {
             case Expr.IfExpression(Expr condition, Expr.Block thenBranch, Optional<Expr.Block> elseBranch): {
                 var conditionExpr = expression(condition);
                 if (!compatibleTypes(conditionExpr.type(), Type.BOOLEAN)) {
-                    // Supondo que o token relevante para a posição do erro seja o primeiro token da
-                    // condição
-                    Token conditionToken = ((Expr.Literal) condition).value(); // Ajuste conforme necessário
-                    error(conditionToken, "Condição do 'if' deve ser booleana.");
+                    error(((Expr.Literal) condition).value(), "Condição do 'if' deve ser booleana.");
+
                 }
 
                 var thenExpr = (TypedExpr.Block) expression(thenBranch);
@@ -227,7 +220,7 @@ public class Analyser {
                 }
 
                 var lastTypedStatement = lastStatement.map(this::statement);
-                Type blockType = lastTypedStatement.map(TypedStmt::type).orElse(Type.VOID);
+                Type blockType = lastTypedStatement.map(TypedStmt::type).orElse(Type.UNIT);
                 return new TypedExpr.Block(typedStatements, lastTypedStatement, blockType);
             }
 
@@ -246,7 +239,11 @@ public class Analyser {
     }
 
     private boolean compatibleTypes(Type type1, Type type2) {
-        return type1.equals(type2); // Substituir por lógica mais avançada, se necessário
+        // Exemplo de compatibilidade avançada
+        if (type1.equals(Type.I_LITERAL) && (type2.equals(Type.I_LITERAL) || type2.equals(Type.I_LITERAL))) {
+            return true;
+        }
+        return type1.equals(type2);
     }
 
     private void error(Token token, String message) {

@@ -30,8 +30,7 @@ public sealed interface Type {
     /// Tipo inválido. Produzido quando ocorre um erro de tipo.
     public static final Type INVALID = new Named("?", List.of());
 
-    /// Tipo vazio, usado para indicar ausência de valor.
-    public static final Type VOID = new Named("void", List.of());
+    public static final Type UNIT = new Named("unit", List.of());
 
     /// Tipo booleano, usado para condições lógicas.
     public static final Type BOOLEAN = new Named("bool", List.of());
