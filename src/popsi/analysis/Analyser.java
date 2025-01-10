@@ -64,6 +64,8 @@ public class Analyser {
             records.add(rec(record));
         }
 
+        table.printSymbolTable();
+
         return new TypedAst.Program(functions, records, table);
     }
 
@@ -108,7 +110,7 @@ public class Analyser {
             error(function.name(), "Função '" + function.name().lexeme() + "' já foi declarada.");
         } else {
             table.insertFunction(function.name().lexeme(),
-                    new SymbolTable.FunctionInfo(new SymbolTable.Id(function.name().hashCode())));
+                    new SymbolTable.FunctionInfo(new SymbolTable.Id(function.name().hashCode()), returnType));
         }
 
         // Criar escopo para a função
@@ -479,6 +481,7 @@ public class Analyser {
             // 4.3.22.5. Para qualquer outro tipo, a operação é inválida.
 
             case Expr.BinaryExpression(Expr left, Token operator, Expr right): {
+
                 // Analisar os operandos
                 var leftExpr = expression(left);
                 var rightExpr = expression(right);
@@ -500,7 +503,7 @@ public class Analyser {
                 }
 
                 // Verificar operadores de atribuição e compostos (+=, -=, etc.)
-                if (operator.type() == TokenType.EQUAL || operator.type().toString().endsWith("_EQUAL")) {
+                if (operator.type() == TokenType.EQUAL) {
                     // O lado esquerdo deve ser uma variável ou campo de registro (lugar atribuível)
                     if (!(leftExpr instanceof TypedExpr.VariableExpression
                             || leftExpr instanceof TypedExpr.RecAccess)) {
@@ -532,6 +535,7 @@ public class Analyser {
 
                 // Determinar o tipo do resultado com base no operador
                 Type resultType = switch (operator.type()) {
+
                     // Operações aritméticas retornam o tipo do lado esquerdo
                     case PLUS, MINUS, STAR, SLASH, PERCENT, HAT -> {
                         if (!isNumericType(leftExpr.type()) || !isNumericType(rightExpr.type())) {
@@ -703,7 +707,8 @@ public class Analyser {
                 // Certifique-se de que a condição é do tipo booleano
                 if (!compatibleTypes(conditionExpr.type(), Type.BOOLEAN)) {
                     error(conditionExpr instanceof TypedExpr.Literal literal ? literal.value() : null,
-                            "A condição do 'if' deve ser do tipo booleano. Tipo Recebido" + conditionExpr.type());
+                            "A condição do 'if' deve ser do tipo booleano. \n" + conditionExpr + "\nTipo Recebido => "
+                                    + conditionExpr.type());
                     return new TypedExpr.IfExpression(conditionExpr, block(thenBranch),
                             elseBranch.map(this::block), Type.INVALID);
                 }
@@ -754,7 +759,7 @@ public class Analyser {
                 // Analisar o valor do retorno
                 var returnValue = expression(value);
 
-                // Obter o tipo esperado de retorno da função atual
+                // Obter o tipo de retorno da função atual
                 var functionType = environment.enclosing()
                         .flatMap(env -> env.get("returnType"))
                         .map(entry -> ((Environment.EnvEntry.Function) entry).type())
@@ -763,7 +768,8 @@ public class Analyser {
                 // Verificar compatibilidade dos tipos
                 if (!compatibleTypes(returnValue.type(), functionType)) {
                     error(value instanceof Expr.Literal literal ? literal.value() : null,
-                            "O tipo do valor retornado não é compatível com o tipo de retorno da função.");
+                            "O tipo do valor retornado não é compatível com o tipo de retorno da função. Retorno esperado => "
+                                    + functionType + "\nRetorno Recebido => " + returnValue.type());
                     return new TypedExpr.ReturnExpression(returnValue, Type.INVALID);
                 }
 

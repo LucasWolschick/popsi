@@ -1,5 +1,5 @@
 rec Pessoa {
-    let nome: String;
+    let nome: str;
     let idade: i32;
     let cpf: i64;
 }

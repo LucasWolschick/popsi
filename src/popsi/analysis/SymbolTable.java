@@ -7,7 +7,7 @@ public class SymbolTable {
     public record Id(int id) {
     }
 
-    public record FunctionInfo(Id id) {
+    public record FunctionInfo(Id id, Type returnType) {
     }
 
     public record TypeInfo(Id id) {
@@ -45,6 +45,20 @@ public class SymbolTable {
 
     public Optional<TypeInfo> lookupType(String name) {
         return Optional.ofNullable(types.get(new Id(name.hashCode())));
+    }
+
+    public void printSymbolTable() {
+        System.out.println("Tabela de Símbolos:");
+        System.out.println("Funções:");
+        function.forEach((id, functionInfo) -> System.out
+                .println("Nome: " + id.id() + ", Tipo: " + functionInfo.returnType().toString()));
+
+        System.out.println("\nTipos:");
+        types.forEach((id, typeInfo) -> System.out.println("Nome: " + id.id() + ", Info: " + typeInfo));
+
+        System.out.println("\nVariáveis:");
+        variables.forEach((name, type) -> System.out.println("Nome: " + name + ", Tipo: " + type.toString()));
+        System.out.println("Fim da Tabela de Símbolos");
     }
 
 }

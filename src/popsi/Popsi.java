@@ -51,7 +51,7 @@ public class Popsi {
 
                         var typedAst = Analyser.analyse(astProg);
 
-                        System.out.println("Funções => " + program.functions());
+                        System.out.println("\nFunções => " + program.functions());
                         System.out.println("\nRecords => " + program.records());
                         switch (typedAst) {
                             case Result.Success<?, ?> s3 -> {
