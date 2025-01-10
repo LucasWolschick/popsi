@@ -9,6 +9,10 @@ public sealed interface Type {
     public static record Function(List<Type> args, Type ret) implements Type {
     }
 
+    /// Tipo Record, usado para representar registros.
+    public static record Record(List<String> fields, List<Type> types) implements Type {
+    }
+
     /// Inteiro de comprimento desconhecido.
     /// Pode ser convertido para qualquer tipo inteiro.
     public static final Type I_LITERAL = new Named("{integer}", List.of());

@@ -33,6 +33,11 @@ public sealed interface TypedAst {
 
         // Parâmetro -> identificador : tipo
         public static record Parameter(Token name, TypeAst typeAst, Type type) implements TypedAst {
+                // Adicionjar resolvedType()
+
+                public Type resolvedType() {
+                        return type;
+                }
         }
 
         public static record RecField(Token name, TypeAst typeAst, Type type) implements TypedAst {
