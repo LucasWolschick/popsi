@@ -87,7 +87,7 @@ public sealed interface Expr {
         }
 
         // Bloco -> "{" comando (";" comando)* ";"? "}"
-        public static record Block(List<Stmt> statements, Optional<Stmt> lastStatement)
+        public static record Block(FilePosition start, List<Stmt> statements, Optional<Stmt> lastStatement)
                         implements Expr {
         }
 }
