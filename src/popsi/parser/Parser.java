@@ -212,9 +212,9 @@ public class Parser {
         consume(TokenType.R_CURLY, "Esperado '}' para fechar o bloco de código aberto na linha " + open.where().line());
 
         if (ateSemi || stmts.isEmpty()) {
-            return new Block(stmts, Optional.empty());
+            return new Block(open.where(), stmts, Optional.empty());
         } else {
-            return new Block(stmts, Optional.of(stmts.removeLast()));
+            return new Block(open.where(), stmts, Optional.of(stmts.removeLast()));
         }
     }
 
