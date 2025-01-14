@@ -179,8 +179,8 @@ public class Analyser {
         // Verificar compatibilidade do tipo de retorno
         if (!compatibleTypes(bodyExpr.type(), returnType)) {
             error(function.name(), "O tipo do corpo da função não é compatível com o tipo de retorno declarado. "
-                    + "Esperado: " + table.types().get(returnType) + ", recebido: "
-                    + table.types().get(bodyExpr.type()));
+                    + "Esperado: " + table.typeDefinition(returnType) + ", recebido: "
+                    + table.typeDefinition(bodyExpr.type()));
         }
 
         return new TypedAst.Function(function.name(), parameters, function.returnType(), bodyExpr, functionId);
@@ -197,7 +197,7 @@ public class Analyser {
         }
 
         // insere na tabela de símbolos
-        var recType = new Type.Record(fields.stream().map(f -> f.name().lexeme()).toList(),
+        var recType = new Type.Record(rec.name().lexeme(), fields.stream().map(f -> f.name().lexeme()).toList(),
                 fields.stream().map(f -> table.typeDefinition(f.type())).toList());
         var recTypeId = table.typeId(recType);
         var recInfo = new RecordInfo(rec.name().lexeme(), recTypeId);
@@ -232,8 +232,10 @@ public class Analyser {
 
                 // Validar compatibilidade de tipos
                 if (typedValue.isPresent() && !compatibleTypes(typedValue.get().type(), resolvedType)) {
-                    error(name, "Tipo incompatível para a variável '" + name.lexeme() + "'. Esperado: " + resolvedType
-                            + ", recebido: " + typedValue.get().type());
+                    error(name,
+                            "Tipo incompatível para a variável '" + name.lexeme() + "'. Esperado: "
+                                    + table.typeDefinition(resolvedType)
+                                    + ", recebido: " + table.typeDefinition(typedValue.get().type()));
                 }
 
                 // adiciona variável local à tabela
@@ -636,6 +638,21 @@ public class Analyser {
                         yield table.typeId(Type.BOOLEAN);
                     }
 
+                    // Intervalo
+                    case DOT_DOT -> {
+                        if (!isIntegerType(leftExpr.type()) || !isIntegerType(rightExpr.type())
+                                || !compatibleTypes(leftExpr.type(), rightExpr.type())) {
+                            error(operator,
+                                    "Intervalos só podem ser construídos entre dois valores numéricos inteiros.");
+                            yield table.typeId(Type.INVALID);
+                        }
+                        var lext = table.typeDefinition(leftExpr.type());
+                        var rext = table.typeDefinition(rightExpr.type());
+                        var common = TypeAlgebra.glb(lext, rext);
+                        table.typeId(common);
+                        yield table.typeId(new Type.Named("..", List.of(common)));
+                    }
+
                     // Operadores não suportados
                     default -> {
                         error(operator, "Operação '" + operator.lexeme() + "' não suportada.");
@@ -689,7 +706,7 @@ public class Analyser {
                         error(arg.value() instanceof Expr.Literal literal ? literal.value() : null,
                                 "Tipo incompatível para o argumento " + (i + 1) + ". Esperado: " + expectedType
                                         + ", recebido: "
-                                        + typedValue.type());
+                                        + table.typeDefinition(typedValue.type()));
                     }
                     typedArguments.add(new TypedExpr.Argument(arg.label(), typedValue, typedValue.type()));
                 }
@@ -934,6 +951,10 @@ public class Analyser {
     // Verifica se o tipo é um inteiro (ex.: i32, i64, u8, etc.)
     private boolean isIntegerType(Type type) {
         return type.equals(Type.I_LITERAL) || type instanceof Type.Named named && named.name().matches("i\\d+|u\\d+");
+    }
+
+    private boolean isIntegerType(Id<TypeInfo> id) {
+        return isIntegerType(table.typeDefinition(id));
     }
 
     // Verifica se o tipo é um float (ex.: f32, f64)

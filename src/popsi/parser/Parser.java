@@ -205,7 +205,6 @@ public class Parser {
                 stmts.add(statement());
             } catch (Exception e) {
                 recover_stmt();
-                System.out.println("Recuperado, em: " + peek().lexeme());
             }
         }
         consume(TokenType.R_CURLY, "Esperado '}' para fechar o bloco de código aberto na linha " + open.where().line());
@@ -356,8 +355,9 @@ public class Parser {
     private Expr range() {
         Expr start = logicOr();
         if (match(TokenType.DOT_DOT)) {
+            var op = previous();
             Expr end = logicOr();
-            return new BinaryExpression(start, previous(), end);
+            return new BinaryExpression(start, op, end);
         } else {
             return start;
         }

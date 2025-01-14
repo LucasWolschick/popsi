@@ -5,13 +5,52 @@ import java.util.Set;
 
 public sealed interface Type {
     public static record Named(String name, List<Type> args) implements Type {
+        @Override
+        public String toString() {
+            switch (name()) {
+                case "..":
+                    return "Range(" + args().get(0).toString() + ")";
+                case "[]":
+                    return "[" + args().get(0).toString() + "]";
+                default: {
+                    var sb = new StringBuilder(name);
+                    if (!args.isEmpty()) {
+                        sb.append('(');
+                        for (int i = 0; i < args().size(); i++) {
+                            sb.append(args.get(i).toString());
+                            if (i != args().size() - 1) {
+                                sb.append(", ");
+                            }
+                        }
+                    }
+                    return sb.toString();
+                }
+            }
+        }
     }
 
     public static record Function(List<Type> args, Type ret) implements Type {
+        @Override
+        public String toString() {
+            var sb = new StringBuilder("fn(");
+            for (int i = 0; i < args.size(); i++) {
+                sb.append(args.get(i).toString());
+                if (i != args.size() - 1) {
+                    sb.append(", ");
+                }
+            }
+            sb.append(") -> ");
+            sb.append(ret.toString());
+            return sb.toString();
+        }
     }
 
     /// Tipo Record, usado para representar registros.
-    public static record Record(List<String> fields, List<Type> types) implements Type {
+    public static record Record(String name, List<String> fields, List<Type> types) implements Type {
+        @Override
+        public String toString() {
+            return name;
+        }
     }
 
     /// Inteiro de comprimento desconhecido.
