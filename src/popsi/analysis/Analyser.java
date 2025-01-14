@@ -570,7 +570,12 @@ public class Analyser {
                 }
 
                 // Verificar operadores de atribuição e compostos (+=, -=, etc.)
-                if (operator.type() == TokenType.EQUAL) {
+
+                if (operator.type() == TokenType.EQUAL || operator.type() == TokenType.PLUS_EQUAL
+                        || operator.type() == TokenType.MINUS_EQUAL || operator.type() == TokenType.STAR_EQUAL
+                        || operator.type() == TokenType.SLASH_EQUAL || operator.type() == TokenType.PERCENT_EQUAL
+                        || operator.type() == TokenType.HAT_EQUAL) {
+
                     // O lado esquerdo deve ser uma variável ou campo de registro (lugar atribuível)
                     if (!(leftExpr instanceof TypedExpr.VariableExpression
                             || leftExpr instanceof TypedExpr.RecAccess
@@ -584,8 +589,9 @@ public class Analyser {
                     // Validar compatibilidade de tipos entre os operandos
                     if (!compatibleTypes(leftExpr.type(), rightExpr.type())) {
                         error(operator, "Os tipos dos operandos não são compatíveis para a operação '"
-                                + operator.lexeme() + "'. Esquerda: " + leftExpr.type() + ", Direita: "
-                                + rightExpr.type());
+                                + operator.lexeme() + "'. Esquerda: " + table.types().get(leftExpr.type()).get().type()
+                                + ", Direita: "
+                                + table.types().get(rightExpr.type()).get().type());
                         return new TypedExpr.BinaryExpression(leftExpr, operator, rightExpr,
                                 table.typeId(Type.INVALID));
                     }
@@ -597,7 +603,9 @@ public class Analyser {
                 // Validar compatibilidade de tipos para operadores binários gerais
                 if (!compatibleTypes(leftExpr.type(), rightExpr.type())) {
                     error(operator, "Os tipos dos operandos não são compatíveis para a operação '"
-                            + operator.lexeme() + "'. Esquerda: " + leftExpr.type() + ", Direita: " + rightExpr.type());
+                            + operator.lexeme() + "'. Esquerda: " + table.types().get(leftExpr.type()).get().type()
+                            + ", Direita: "
+                            + table.types().get(rightExpr.type()).get().type());
                     return new TypedExpr.BinaryExpression(leftExpr, operator, rightExpr, table.typeId(Type.INVALID));
                 }
 
@@ -611,6 +619,14 @@ public class Analyser {
                                     "Os operandos devem ser numéricos para a operação '" + operator.lexeme() + "'.");
                             yield table.typeId(Type.INVALID);
                         }
+
+                        else if ((operator.type() == TokenType.SLASH || operator.type() == TokenType.PERCENT)
+                                && rightExpr instanceof TypedExpr.Literal literal
+                                && literal.value().lexeme().equals("0")) {
+                            error(operator, "Divisão por zero.");
+                            yield table.typeId(Type.INVALID);
+                        }
+
                         // Retorna o tipo concreto, evitando {integer} quando possível
                         yield table.typeId(TypeAlgebra.glb(table.typeDefinition(leftExpr.type()),
                                 table.typeDefinition(rightExpr.type())));
@@ -683,7 +699,8 @@ public class Analyser {
 
                 // Verificar se o alvo é uma função
                 if (!(table.typeDefinition(targetExpr.type()) instanceof Type.Function functionType)) {
-                    error(targetExpr instanceof TypedExpr.Literal literal ? literal.value() : null,
+                    error(targetExpr instanceof TypedExpr.Literal literal ? literal.value()
+                            : (targetExpr instanceof TypedExpr.VariableExpression variable ? variable.name() : null),
                             "O alvo da chamada não é uma função.");
                     return new TypedExpr.FunctionCall(targetExpr, List.of(), table.typeId(Type.INVALID));
                 }
