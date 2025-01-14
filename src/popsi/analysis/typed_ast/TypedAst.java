@@ -2,11 +2,12 @@ package popsi.analysis.typed_ast;
 
 import java.util.List;
 import java.util.Optional;
-
 import popsi.analysis.SymbolTable;
-import popsi.analysis.Type;
+import popsi.analysis.SymbolTable.FunctionInfo;
+import popsi.analysis.SymbolTable.Id;
+import popsi.analysis.SymbolTable.RecordInfo;
+import popsi.analysis.SymbolTable.TypeInfo;
 import popsi.lexer.Token;
-import popsi.parser.ast.Expr.Block;
 import popsi.parser.ast.TypeAst;
 
 public sealed interface TypedAst {
@@ -20,21 +21,22 @@ public sealed interface TypedAst {
                         Token name, // Nome da função
                         List<Parameter> parameters, // Lista de parâmetros
                         Optional<TypeAst> returnType, // Tipo de retorno
-                        Block body, // Corpo da função
-                        Type type // Tipo da função
+                        TypedExpr.Block body, // Corpo da função
+                        Id<FunctionInfo> function // Informações da função
         ) implements TypedAst {
         }
 
         // Record -> "record" identificador "{" campos "}"
         public static record Rec(
                         Token name,
-                        List<RecField> fields) implements TypedAst {
+                        List<RecField> fields,
+                        Id<RecordInfo> record) implements TypedAst {
         }
 
         // Parâmetro -> identificador : tipo
-        public static record Parameter(Token name, TypeAst typeAst, Type type) implements TypedAst {
+        public static record Parameter(Token name, TypeAst typeAst, Id<TypeInfo> type) implements TypedAst {
         }
 
-        public static record RecField(Token name, TypeAst typeAst, Type type) implements TypedAst {
+        public static record RecField(Token name, TypeAst typeAst, Id<TypeInfo> type) implements TypedAst {
         }
 }

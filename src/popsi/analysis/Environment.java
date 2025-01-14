@@ -3,31 +3,42 @@ package popsi.analysis;
 import java.util.HashMap;
 import java.util.Optional;
 
+import popsi.analysis.SymbolTable.FunctionInfo;
+import popsi.analysis.SymbolTable.Id;
+import popsi.analysis.SymbolTable.LocalInfo;
+import popsi.analysis.SymbolTable.RecordInfo;
+import popsi.analysis.SymbolTable.TypeInfo;
+
 public class Environment {
     private HashMap<String, EnvEntry> values;
     private HashMap<String, TypeEnvEntry> types;
     private Optional<Environment> enclosing;
 
     public static sealed interface EnvEntry {
-        public record Function() implements EnvEntry {
+        public record Function(Id<FunctionInfo> functionId) implements EnvEntry {
         }
 
-        public record Local() implements EnvEntry {
+        public record Local(Id<LocalInfo> localId) implements EnvEntry {
         }
     }
 
     public static sealed interface TypeEnvEntry {
-        public record Function() implements TypeEnvEntry {
+        public record Type(Id<TypeInfo> typeId) implements TypeEnvEntry {
+        }
+
+        public record Record(Id<RecordInfo> recordId) implements TypeEnvEntry {
         }
     }
 
     public Environment() {
         this.values = new HashMap<>();
+        this.types = new HashMap<>();
         this.enclosing = Optional.empty();
     }
 
     public Environment(Environment enclosing) {
         this.values = new HashMap<>();
+        this.types = new HashMap<>();
         this.enclosing = Optional.of(enclosing);
     }
 
@@ -57,5 +68,9 @@ public class Environment {
 
     public void putType(String key, TypeEnvEntry entry) {
         types.put(key, entry);
+    }
+
+    public Optional<Environment> enclosing() {
+        return enclosing;
     }
 }
