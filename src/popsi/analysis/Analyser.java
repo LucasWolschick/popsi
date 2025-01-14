@@ -573,7 +573,8 @@ public class Analyser {
                 if (operator.type() == TokenType.EQUAL) {
                     // O lado esquerdo deve ser uma variável ou campo de registro (lugar atribuível)
                     if (!(leftExpr instanceof TypedExpr.VariableExpression
-                            || leftExpr instanceof TypedExpr.RecAccess)) {
+                            || leftExpr instanceof TypedExpr.RecAccess
+                            || leftExpr instanceof TypedExpr.ListAccess)) {
                         error(operator,
                                 "O lado esquerdo de uma atribuição deve ser uma variável ou um campo de registro.");
                         return new TypedExpr.BinaryExpression(leftExpr, operator, rightExpr,
