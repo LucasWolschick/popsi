@@ -2,7 +2,6 @@ package popsi.analysis.typed_ast;
 
 import java.util.List;
 import java.util.Optional;
-
 import popsi.FilePosition;
 import popsi.analysis.SymbolTable.Id;
 import popsi.analysis.SymbolTable.TypeInfo;
@@ -77,7 +76,7 @@ public sealed interface TypedExpr {
         public static record IfExpression(
                         TypedExpr condition, // Condição do `if`
                         Block thenBranch, // Bloco do `then`
-                        Optional<Block> elseBranch, // Bloco do `else`, se houver
+                        Optional<TypedExpr> elseBranch, // Bloco do `else`, se houver
                         Id<TypeInfo> type) implements TypedExpr {
         }
 

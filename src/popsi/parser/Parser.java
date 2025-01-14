@@ -1,11 +1,10 @@
 package popsi.parser;
 
 import java.util.*;
-
 import popsi.CompilerError;
-import popsi.Result;
 import popsi.CompilerError.ErrorType;
 import popsi.FilePosition;
+import popsi.Result;
 import popsi.lexer.Token;
 import popsi.lexer.Token.TokenType;
 import popsi.parser.ast.*;
@@ -142,7 +141,7 @@ public class Parser {
             switch (peek().type()) {
                 case TokenType.LET, TokenType.IF, TokenType.WHILE, TokenType.FOR, TokenType.RETURN,
                         TokenType.DEBUG:
-                    break;
+                    return;
                 default:
                     next();
             }
@@ -294,9 +293,13 @@ public class Parser {
     private Expr ifExpression() {
         Expr condition = expression();
         Block thenBranch = block();
-        Optional<Block> elseBranch = Optional.empty();
+        Optional<Expr> elseBranch = Optional.empty();
         if (match(TokenType.ELSE)) {
-            elseBranch = Optional.of(block());
+            if (match(TokenType.IF))
+                elseBranch = Optional.of(ifExpression());
+            else
+                elseBranch = Optional.of(block());
+
         }
         return new IfExpression(condition, thenBranch, elseBranch);
     }

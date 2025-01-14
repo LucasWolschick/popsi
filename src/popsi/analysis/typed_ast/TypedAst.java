@@ -2,7 +2,6 @@ package popsi.analysis.typed_ast;
 
 import java.util.List;
 import java.util.Optional;
-
 import popsi.analysis.SymbolTable;
 import popsi.analysis.SymbolTable.FunctionInfo;
 import popsi.analysis.SymbolTable.Id;

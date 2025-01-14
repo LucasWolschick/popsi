@@ -77,12 +77,12 @@ public class Analyser {
         var functions = new ArrayList<TypedAst.Function>();
         var records = new ArrayList<TypedAst.Rec>();
 
-        for (var function : program.functions()) {
-            functions.add(function(function));
-        }
-
         for (var record : program.records()) {
             records.add(rec(record));
+        }
+
+        for (var function : program.functions()) {
+            functions.add(function(function));
         }
 
         // table.printSymbolTable();
@@ -100,6 +100,7 @@ public class Analyser {
     }
 
     private TypedExpr.Block block(Expr.Block block) {
+
         // Um bloco abre um novo escopo
         environment = new Environment(environment);
 
@@ -178,7 +179,8 @@ public class Analyser {
         // Verificar compatibilidade do tipo de retorno
         if (!compatibleTypes(bodyExpr.type(), returnType)) {
             error(function.name(), "O tipo do corpo da função não é compatível com o tipo de retorno declarado. "
-                    + "Esperado: " + returnType + ", recebido: " + bodyExpr.type());
+                    + "Esperado: " + table.types().get(returnType) + ", recebido: "
+                    + table.types().get(bodyExpr.type()));
         }
 
         return new TypedAst.Function(function.name(), parameters, function.returnType(), bodyExpr, functionId);
@@ -186,10 +188,12 @@ public class Analyser {
 
     private TypedAst.Rec rec(Ast.Rec rec) {
         var fields = new ArrayList<TypedAst.RecField>();
+        var parameters = new ArrayList<TypedAst.Parameter>();
 
         for (var field : rec.fields()) {
             var type = typeAst(field.type());
             fields.add(new TypedAst.RecField(field.name(), field.type(), type));
+            parameters.add(new TypedAst.Parameter(field.name(), field.type(), type));
         }
 
         // insere na tabela de símbolos
@@ -199,8 +203,10 @@ public class Analyser {
         var recInfo = new RecordInfo(rec.name().lexeme(), recTypeId);
         var recInfoId = table.records().insert(recInfo);
 
-        // insere no environment
+        // insere o tipo no environment
         environment.putType(recInfo.name(), new TypeEnvEntry.Record(recInfoId));
+
+        // TODO: registrar construtores
 
         return new TypedAst.Rec(rec.name(), fields, recInfoId);
     }
@@ -765,7 +771,7 @@ public class Analyser {
                 return new TypedExpr.ForExpression(variable, typeAst, rangeExpr, bodyExpr, table.typeId(Type.UNIT));
             }
 
-            case Expr.IfExpression(Expr condition, Expr.Block thenBranch, Optional<Expr.Block> elseBranch): {
+            case Expr.IfExpression(Expr condition, Expr.Block thenBranch, Optional<Expr> elseBranch): {
                 var conditionExpr = expression(condition);
 
                 // Certifique-se de que a condição é do tipo booleano
@@ -774,7 +780,7 @@ public class Analyser {
                             "A condição do 'if' deve ser do tipo booleano. \n" + conditionExpr + "\nTipo Recebido => "
                                     + conditionExpr.type());
                     return new TypedExpr.IfExpression(conditionExpr, block(thenBranch),
-                            elseBranch.map(this::block), table.typeId(Type.INVALID));
+                            elseBranch.map(this::expression), table.typeId(Type.INVALID));
                 }
 
                 // Criar escopo para os blocos
@@ -782,9 +788,9 @@ public class Analyser {
                 var thenExpr = block(thenBranch);
                 environment = environment.enclosing().orElse(null);
 
-                var elseExpr = elseBranch.map(branch -> {
+                Optional<TypedExpr> elseExpr = elseBranch.map(branch -> {
                     environment = new Environment(environment);
-                    var result = block(branch);
+                    TypedExpr result = expression(branch);
                     environment = environment.enclosing().orElse(null);
                     return result;
                 });

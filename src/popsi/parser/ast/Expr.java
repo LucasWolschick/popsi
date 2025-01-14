@@ -2,7 +2,6 @@ package popsi.parser.ast;
 
 import java.util.List;
 import java.util.Optional;
-
 import popsi.FilePosition;
 import popsi.lexer.Token;
 
@@ -67,7 +66,7 @@ public sealed interface Expr {
         public static record IfExpression(
                         Expr condition, // Condição do `if`
                         Block thenBranch, // Bloco do `then`
-                        Optional<Block> elseBranch // Bloco do `else`, se houver
+                        Optional<Expr> elseBranch // Bloco do `else`, se houver
         ) implements Expr {
         }
 

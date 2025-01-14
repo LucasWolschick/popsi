@@ -1,0 +1,29 @@
+fn main() {
+    let val1: i32 = 0;
+    let val2: i32 = 1;
+
+    if val1 != val2 {
+        debug val1;
+    }
+    else if val1 < val2 {
+        debug val1;
+    }
+    else if val1 >= val2 {
+        debug val1;
+    }
+    else if val1 <= val2 {
+        debug val1;
+    }
+    else if val1 == val2 {
+        debug val1;
+    }
+    else if val1 != val2 {
+        debug val1;
+    }
+    else {
+        debug val1;
+    }
+
+
+    debug val1;
+}
