@@ -14,6 +14,7 @@ import popsi.analysis.SymbolTable.TypeInfo;
 import popsi.analysis.Type.TypeAlgebra;
 import popsi.analysis.SymbolTable.LocalInfo;
 import popsi.analysis.SymbolTable.RecordInfo;
+import popsi.analysis.Cfa.CfaResult;
 import popsi.analysis.Environment.EnvEntry;
 import popsi.analysis.Environment.TypeEnvEntry;
 import popsi.analysis.SymbolTable.FunctionInfo;
@@ -180,8 +181,11 @@ public class Analyser {
         // Restaurar o escopo anterior
         environment = environment.enclosing().orElse(null);
 
-        // Verificar compatibilidade do tipo de retorno
-        if (!compatibleTypes(bodyExpr.type(), returnType)) {
+        // Verificar se a função tem um retorno
+        var branchReturns = new Cfa(table).ensureAllPathsReturnType(bodyExpr, table.typeDefinition(returnType));
+
+        if (branchReturns != CfaResult.RETURNED_TYPE
+                && !table.typeDefinition(returnType).equals(table.typeDefinition(bodyExpr.type()))) {
             error(function.name(), "O tipo do corpo da função não é compatível com o tipo de retorno declarado. "
                     + "Esperado: " + table.typeDefinition(returnType) + ", recebido: "
                     + table.typeDefinition(bodyExpr.type()));
@@ -290,8 +294,8 @@ public class Analyser {
         var fromType = table.typeDefinition(from);
         var toType = table.typeDefinition(to);
 
-        if ((isIntegerType(fromType) || isFloatType(fromType)) &&
-                (isIntegerType(toType) || isFloatType(toType))) {
+        if ((TypeAlgebra.isIntegerType(fromType) || TypeAlgebra.isFloatType(fromType)) &&
+                (TypeAlgebra.isIntegerType(toType) || TypeAlgebra.isFloatType(toType))) {
             return true; // Qualquer numérico pode ser convertido para outro numérico
         }
 
@@ -1165,74 +1169,17 @@ public class Analyser {
     }
 
     private boolean compatibleTypes(Id<TypeInfo> type1, Id<TypeInfo> type2) {
-        return compatibleTypes(table.typeDefinition(type1), table.typeDefinition(type2));
-    }
-
-    private boolean compatibleTypes(Type type1, Type type2) {
-        // Tipos iguais são sempre compatíveis
-        if (type1.equals(type2)) {
-            return true;
-        }
-
-        // Literais inteiros podem ser compatíveis com tipos numéricos específicos
-        if (type1.equals(Type.I_LITERAL) && isIntegerType(type2) ||
-                type2.equals(Type.I_LITERAL) && isIntegerType(type1)) {
-            return true;
-        }
-
-        // Literais de ponto flutuante podem ser compatíveis com tipos float
-        if (type1.equals(Type.F_LITERAL) && isFloatType(type2) ||
-                type2.equals(Type.F_LITERAL) && isFloatType(type1)) {
-            return true;
-        }
-
-        // Verificar compatibilidade entre listas
-        if (type1 instanceof Type.Named named1 && type2 instanceof Type.Named named2) {
-            if (named1.name().equals("[]") && named2.name().equals("[]")) {
-                // Verificar compatibilidade dos tipos de elementos da lista
-                return compatibleTypes(named1.args().get(0), named2.args().get(0));
-            }
-        }
-
-        // Verificar compatibilidade entre registros
-        if (type1 instanceof Type.Record record1 && type2 instanceof Type.Record record2) {
-            // Verificar se os registros têm os mesmos campos e tipos
-            if (record1.fields().size() != record2.fields().size()) {
-                return false;
-            }
-            for (int i = 0; i < record1.fields().size(); i++) {
-                if (!record1.fields().get(i).equals(record2.fields().get(i)) ||
-                        !compatibleTypes(record1.types().get(i), record2.types().get(i))) {
-                    return false;
-                }
-            }
-            return true;
-        }
-
-        // Tipos incompatíveis por padrão
-        return false;
+        return TypeAlgebra.compatibleTypes(table.typeDefinition(type1), table.typeDefinition(type2));
     }
 
     // Verifica se o tipo é um inteiro (ex.: i32, i64, u8, etc.)
-    private boolean isIntegerType(Type type) {
-        return type.equals(Type.I_LITERAL) || type instanceof Type.Named named && named.name().matches("i\\d+|u\\d+");
-    }
-
     private boolean isIntegerType(Id<TypeInfo> id) {
-        return isIntegerType(table.typeDefinition(id));
+        return TypeAlgebra.isIntegerType(table.typeDefinition(id));
     }
 
     // Verifica se o tipo é um float (ex.: f32, f64)
-    private boolean isFloatType(Type type) {
-        return type instanceof Type.Named named && named.name().matches("f\\d+");
-    }
-
     private boolean isNumericType(Id<TypeInfo> id) {
-        return isNumericType(table.typeDefinition(id));
-    }
-
-    private boolean isNumericType(Type type) {
-        return isIntegerType(type) || isFloatType(type);
+        return TypeAlgebra.isNumericType(table.typeDefinition(id));
     }
 
     private void error(Token token, String message) {

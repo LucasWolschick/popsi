@@ -187,5 +187,64 @@ public sealed interface Type {
                 return NOTHING;
             }
         }
+
+        public static boolean compatibleTypes(Type type1, Type type2) {
+            // Tipos iguais são sempre compatíveis
+            if (type1.equals(type2)) {
+                return true;
+            }
+
+            // Literais inteiros podem ser compatíveis com tipos numéricos específicos
+            if (type1.equals(Type.I_LITERAL) && isIntegerType(type2) ||
+                    type2.equals(Type.I_LITERAL) && isIntegerType(type1)) {
+                return true;
+            }
+
+            // Literais de ponto flutuante podem ser compatíveis com tipos float
+            if (type1.equals(Type.F_LITERAL) && isFloatType(type2) ||
+                    type2.equals(Type.F_LITERAL) && isFloatType(type1)) {
+                return true;
+            }
+
+            // Verificar compatibilidade entre listas
+            if (type1 instanceof Type.Named named1 && type2 instanceof Type.Named named2) {
+                if (named1.name().equals("[]") && named2.name().equals("[]")) {
+                    // Verificar compatibilidade dos tipos de elementos da lista
+                    return compatibleTypes(named1.args().get(0), named2.args().get(0));
+                }
+            }
+
+            // Verificar compatibilidade entre registros
+            if (type1 instanceof Type.Record record1 && type2 instanceof Type.Record record2) {
+                // Verificar se os registros têm os mesmos campos e tipos
+                if (record1.fields().size() != record2.fields().size()) {
+                    return false;
+                }
+                for (int i = 0; i < record1.fields().size(); i++) {
+                    if (!record1.fields().get(i).equals(record2.fields().get(i)) ||
+                            !compatibleTypes(record1.types().get(i), record2.types().get(i))) {
+                        return false;
+                    }
+                }
+                return true;
+            }
+
+            // Tipos incompatíveis por padrão
+            return false;
+        }
+
+        public static boolean isIntegerType(Type type) {
+            return type.equals(Type.I_LITERAL)
+                    || type instanceof Type.Named named && named.name().matches("i\\d+|u\\d+");
+        }
+
+        public static boolean isFloatType(Type type) {
+            return type instanceof Type.Named named && named.name().matches("f\\d+");
+        }
+
+        public static boolean isNumericType(Type type) {
+            return isIntegerType(type) || isFloatType(type);
+        }
     }
+
 }
