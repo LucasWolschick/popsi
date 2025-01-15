@@ -58,6 +58,7 @@ public class AstPrinter {
             case Expr.WhileExpression whileExpr -> parens("while", whileExpr.condition(), whileExpr.body());
             case Expr.ReturnExpression returnExpr -> parens("return", returnExpr.value());
             case Expr.DebugExpression debugExpr -> parens("debug", debugExpr.value());
+            case Expr.ReadExpression readExpr -> parens("read", readExpr.variables());
             case Expr.Block block -> parens("block", block.statements(), block.lastStatement());
             case Expr.ListExpression list -> parens("list", list.elements());
             case Expr.TypeConversion conversion ->
@@ -67,6 +68,7 @@ public class AstPrinter {
                         ? arg.label().get().lexeme() + ": " + print(arg.value())
                         : print(arg.value());
             case Expr.RecAccess rec -> parens(".", rec.target(), rec.place());
+
         };
     }
 

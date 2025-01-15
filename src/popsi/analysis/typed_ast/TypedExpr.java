@@ -95,6 +95,9 @@ public sealed interface TypedExpr {
         public static record DebugExpression(TypedExpr value, Id<TypeInfo> type) implements TypedExpr {
         }
 
+        public static record ReadExpression(List<TypedExpr> variables, Id<TypeInfo> type) implements TypedExpr {
+        }
+
         // Bloco -> "{" comando (";" comando)* ";"? "}"
         public static record Block(FilePosition start, List<TypedStmt> statements, Optional<TypedStmt> lastStatement,
                         Id<TypeInfo> type)

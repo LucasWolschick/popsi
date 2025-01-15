@@ -85,6 +85,9 @@ public sealed interface Expr {
         public static record DebugExpression(Expr value) implements Expr {
         }
 
+        public static record ReadExpression(List<Expr> variables) implements Expr {
+        }
+
         // Bloco -> "{" comando (";" comando)* ";"? "}"
         public static record Block(FilePosition start, List<Stmt> statements, Optional<Stmt> lastStatement)
                         implements Expr {

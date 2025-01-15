@@ -1,4 +1,3 @@
 fn main() {
-   let x: u8 = 1000;
-
+    let x: u8 = 1000;
 }

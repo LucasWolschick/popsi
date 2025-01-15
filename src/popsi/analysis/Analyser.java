@@ -211,6 +211,15 @@ public class Analyser {
         environment.putType(recInfo.name(), new TypeEnvEntry.Record(recInfoId));
 
         // TODO: registrar construtores
+        var constructorType = new Type.Function(
+                parameters.stream().map(p -> table.typeDefinition(p.type())).toList(),
+                table.typeDefinition(recTypeId));
+
+        var constructorTypeId = table.typeId(constructorType);
+        var constructorInfo = new FunctionInfo(rec.name().lexeme(), constructorTypeId);
+        table.functions().insert(constructorInfo);
+
+        environment.put(rec.name().lexeme(), new EnvEntry.Function(table.functions().insert(constructorInfo)));
 
         return new TypedAst.Rec(rec.name(), fields, recInfoId);
     }
@@ -244,11 +253,13 @@ public class Analyser {
 
                     // Verificar se o valor do literal cabe no tipo da variável
                     if (typedValue.get() instanceof TypedExpr.Literal literal) {
-                        var literalValue = Long.parseLong(literal.value().lexeme()); // Obter o valor do literal
-                        if (!fitsInIntegerType(literalValue, table.typeDefinition(resolvedType))) {
-                            error(name,
-                                    "Valor do literal '" + literalValue + "' não cabe no tipo '" +
-                                            table.typeDefinition(resolvedType) + "'.");
+                        if (literal.value().type() == TokenType.INTEGER || literal.value().type() == TokenType.FLOAT) {
+                            var literalValue = Long.parseLong(literal.value().lexeme()); // Obter o valor do literal
+                            if (!fitsInIntegerType(literalValue, table.typeDefinition(resolvedType))) {
+                                error(name,
+                                        "Valor do literal '" + literalValue + "' não cabe no tipo '" +
+                                                table.typeDefinition(resolvedType) + "'.");
+                            }
                         }
                     }
                 }
@@ -1097,6 +1108,31 @@ public class Analyser {
 
                 // Retornar a expressão de depuração tipada
                 return new TypedExpr.DebugExpression(debugValue, debugValue.type());
+            }
+
+            case Expr.ReadExpression(List<Expr> variables): {
+                var typedVariables = new ArrayList<TypedExpr>();
+
+                for (var variable : variables) {
+                    if (!(variable instanceof Expr.VariableExpression varExpr)) {
+                        error(variable instanceof Expr.Literal literal ? literal.value() : null,
+                                "Somente variáveis podem ser usadas na expressão 'read'.");
+
+                        return new TypedExpr.ReadExpression(List.of(), table.typeId(Type.INVALID));
+                    }
+
+                    var local = environment.get(varExpr.name().lexeme());
+                    if (local.isEmpty() || !(local.get() instanceof EnvEntry.Local localEntry)) {
+                        error(varExpr.name(), "A variável '" + varExpr.name().lexeme() + "' não foi declarada.");
+
+                        return new TypedExpr.ReadExpression(List.of(), table.typeId(Type.INVALID));
+                    }
+
+                    typedVariables.add(new TypedExpr.VariableExpression(varExpr.name(),
+                            table.locals().get(((EnvEntry.Local) local.get()).localId()).get().type()));
+                }
+
+                return new TypedExpr.ReadExpression(typedVariables, table.typeId(Type.UNIT));
             }
 
             case Expr.Block block:

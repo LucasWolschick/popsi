@@ -1,0 +1,30 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+    
+        {
+            "type": "java",
+            "name": "Current File",
+            "request": "launch",
+            "mainClass": "${file}"
+        },
+        {
+            "type": "java",
+            "name": "Popsi",
+            "request": "launch",
+            "mainClass": "popsi.Popsi",
+            "projectName": "popsi_3ecd87dd"
+        },
+        {
+            "type": "java",
+            "name": "Debug tipo.psi",
+            "request": "launch",
+            "mainClass": "popsi.Popsi", // Substitua pela sua classe principal
+            "projectName": "popsi_3ecd87dd",
+            "args": ["test/tipo.psi"]
+        }
+    ]
+}
