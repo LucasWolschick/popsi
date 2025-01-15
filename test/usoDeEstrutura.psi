@@ -8,7 +8,9 @@ fn main() {
     let pessoa1: Pessoa = Pessoa(nome: "Pedro", cpf: 12345612345);
     pessoa1.idade = 19;
 
-    debug pessoa1.nome;
+    let res3: i32 = 5^(1/0);
+
+    debug pessoa1.nomes;
     debug pessoa1.idade;
     debug pessoa1.cpf;
 }
