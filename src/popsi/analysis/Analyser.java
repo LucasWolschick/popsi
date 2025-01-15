@@ -283,8 +283,8 @@ public class Analyser {
         var fromType = table.typeDefinition(from);
         var toType = table.typeDefinition(to);
 
-        if ((isIntegerType(fromType) || isFloatType(fromType)) &&
-                (isIntegerType(toType) || isFloatType(toType))) {
+        if ((TypeAlgebra.isIntegerType(fromType) || TypeAlgebra.isFloatType(fromType)) &&
+                (TypeAlgebra.isIntegerType(toType) || TypeAlgebra.isFloatType(toType))) {
             return true; // Qualquer numérico pode ser convertido para outro numérico
         }
 

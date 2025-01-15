@@ -158,6 +158,13 @@ public class Cfa {
                 }
                 yield CfaResult.CONTINUE;
             }
+            case TypedExpr.TypeConversionExpression conv -> {
+                var result = visitExpr(conv.value(), expected);
+                if (result != CfaResult.CONTINUE) {
+                    yield result;
+                }
+                yield CfaResult.CONTINUE;
+            }
         };
     }
 
