@@ -30,6 +30,9 @@ public class Analyser {
     public static Result<TypedAst.Program, List<CompilerError>> analyse(Ast.Program program) {
         var analyser = new Analyser();
         var typedProgram = analyser.program(program);
+
+        analyser.table.printSymbolTable();
+
         if (analyser.errors.isEmpty()) {
             return new Result.Success<>(typedProgram);
         } else {
@@ -57,6 +60,7 @@ public class Analyser {
         for (var type : List.of(
                 Type.U8, Type.U16, Type.U32, Type.U64,
                 Type.I8, Type.I16, Type.I32, Type.I64,
+                Type.F32, Type.F64,
                 Type.STR,
                 Type.CHAR,
                 Type.UNIT,
@@ -222,7 +226,6 @@ public class Analyser {
         // é ocultada, até que essa variável saia de escopo.
         // 1.3. O valor de uma declaração é o valor da expressão que ela contém, ou o
         // valor Unit, caso a expressão seja vazia.
-
         switch (stmt) {
             case Stmt.Declaration(Token name, TypeAst typeAst, Optional<Expr> value): {
                 var resolvedType = typeAst(typeAst);
@@ -231,18 +234,30 @@ public class Analyser {
                 var typedValue = value.map(this::expression);
 
                 // Validar compatibilidade de tipos
-                if (typedValue.isPresent() && !compatibleTypes(typedValue.get().type(), resolvedType)) {
-                    error(name,
-                            "Tipo incompatível para a variável '" + name.lexeme() + "'. Esperado: "
-                                    + table.typeDefinition(resolvedType)
-                                    + ", recebido: " + table.typeDefinition(typedValue.get().type()));
+                if (typedValue.isPresent()) {
+                    if (!compatibleTypes(typedValue.get().type(), resolvedType)) {
+                        error(name,
+                                "Tipo incompatível para a variável '" + name.lexeme() + "'. Esperado: "
+                                        + table.typeDefinition(resolvedType)
+                                        + ", recebido: " + table.typeDefinition(typedValue.get().type()));
+                    }
+
+                    // Verificar se o valor do literal cabe no tipo da variável
+                    if (typedValue.get() instanceof TypedExpr.Literal literal) {
+                        var literalValue = Long.parseLong(literal.value().lexeme()); // Obter o valor do literal
+                        if (!fitsInIntegerType(literalValue, table.typeDefinition(resolvedType))) {
+                            error(name,
+                                    "Valor do literal '" + literalValue + "' não cabe no tipo '" +
+                                            table.typeDefinition(resolvedType) + "'.");
+                        }
+                    }
                 }
 
-                // adiciona variável local à tabela
+                // Adiciona variável local à tabela
                 var localInfo = new LocalInfo(name.lexeme(), resolvedType);
                 var localId = table.locals().insert(localInfo);
 
-                // adiciona variável local ao escopo
+                // Adiciona variável local ao escopo
                 if (environment.get(name.lexeme()).isPresent()) {
                     error(name, "Variável '" + name.lexeme() + "' já foi declarada.");
                 } else {
@@ -252,8 +267,7 @@ public class Analyser {
                 return new TypedStmt.Declaration(name, typeAst, typedValue, localId);
             }
 
-            // 2.1. O tipo de uma expressão é o tipo do valor que ela representa.
-            // 2.2. O valor de uma expressão é o valor que ela representa.
+            // Outros casos permanecem iguais
             case Stmt.ExpressionStatement(Expr expression): {
                 var typedExpr = expression(expression);
                 return new TypedStmt.ExpressionStatement(typedExpr, typedExpr.type());
@@ -261,7 +275,126 @@ public class Analyser {
         }
     }
 
+    private boolean canConvert(Id<TypeInfo> from, Id<TypeInfo> to) {
+        var fromType = table.typeDefinition(from);
+        var toType = table.typeDefinition(to);
+
+        if ((isIntegerType(fromType) || isFloatType(fromType)) &&
+                (isIntegerType(toType) || isFloatType(toType))) {
+            return true; // Qualquer numérico pode ser convertido para outro numérico
+        }
+
+        if (toType.equals(Type.STR)) {
+            return false;
+        }
+
+        return false;
+    }
+
+    // private boolean canConvert(Id<TypeInfo> from, Id<TypeInfo> to) {
+    // var fromType = table.typeDefinition(from);
+    // var toType = table.typeDefinition(to);
+
+    // // Conversão entre tipos inteiros
+    // if (isIntegerType(fromType) && isIntegerType(toType)) {
+    // if (fromType.equals(Type.I_LITERAL)) {
+    // // Literais inteiros podem ser convertidos se couberem
+    // return fitsInIntegerType(Long.MAX_VALUE, toType) &&
+    // fitsInIntegerType(Long.MIN_VALUE, toType);
+    // } else if (fromType.equals(Type.I64) || fromType.equals(Type.U64)) {
+    // // Verificar se valores grandes cabem no tipo de destino
+    // return fitsInIntegerType(Long.MAX_VALUE, toType) &&
+    // fitsInIntegerType(Long.MIN_VALUE, toType);
+    // }
+    // return true; // Outros inteiros podem ser convertidos
+    // }
+
+    // // Conversão de inteiro para float
+    // if (isIntegerType(fromType) && isFloatType(toType)) {
+    // return true; // Sempre válido
+    // }
+
+    // // Conversão de float para inteiro
+    // if (isFloatType(fromType) && isIntegerType(toType)) {
+    // return fitsInIntegerType(Double.MAX_VALUE, toType) &&
+    // fitsInIntegerType(Double.MIN_VALUE, toType);
+    // }
+
+    // // Conversão entre floats
+    // if (isFloatType(fromType) && isFloatType(toType)) {
+    // return true;
+    // }
+
+    // // Conversão para string
+    // if (toType.equals(Type.STR)) {
+    // return false; // Conversão explícita para string não é permitida
+    // }
+
+    // return false;
+    // }
+
+    // private boolean fitsInIntegerType(double number, Type toType) {
+    // if (toType.equals(Type.I8)) {
+    // return number >= Byte.MIN_VALUE && number <= Byte.MAX_VALUE && number ==
+    // (int) number;
+    // }
+    // if (toType.equals(Type.U8)) {
+    // return number >= 0 && number <= 255 && number == (int) number;
+    // }
+    // if (toType.equals(Type.I16)) {
+    // return number >= Short.MIN_VALUE && number <= Short.MAX_VALUE && number ==
+    // (int) number;
+    // }
+    // if (toType.equals(Type.U16)) {
+    // return number >= 0 && number <= 65535 && number == (int) number;
+    // }
+    // if (toType.equals(Type.I32)) {
+    // return number >= Integer.MIN_VALUE && number <= Integer.MAX_VALUE && number
+    // == (int) number;
+    // }
+    // if (toType.equals(Type.U32)) {
+    // return number >= 0 && number <= 4294967295L && number == (long) number;
+    // }
+    // if (toType.equals(Type.I64)) {
+    // return number >= Long.MIN_VALUE && number <= Long.MAX_VALUE && number ==
+    // (long) number;
+    // }
+    // if (toType.equals(Type.U64)) {
+    // return number >= 0 && number <= Double.MAX_VALUE && number == (long) number;
+    // }
+    // return false;
+    // }
+
+    private boolean fitsInIntegerType(long value, Type toType) {
+        if (toType.equals(Type.I8)) {
+            return value >= Byte.MIN_VALUE && value <= Byte.MAX_VALUE;
+        }
+        if (toType.equals(Type.U8)) {
+            return value >= 0 && value <= 255;
+        }
+        if (toType.equals(Type.I16)) {
+            return value >= Short.MIN_VALUE && value <= Short.MAX_VALUE;
+        }
+        if (toType.equals(Type.U16)) {
+            return value >= 0 && value <= 65535;
+        }
+        if (toType.equals(Type.I32)) {
+            return value >= Integer.MIN_VALUE && value <= Integer.MAX_VALUE;
+        }
+        if (toType.equals(Type.U32)) {
+            return value >= 0 && value <= 4294967295L;
+        }
+        if (toType.equals(Type.I64)) {
+            return true; // Qualquer long cabe em i64
+        }
+        if (toType.equals(Type.U64)) {
+            return value >= 0; // Apenas valores positivos cabem em u64
+        }
+        return false;
+    }
+
     private TypedExpr expression(Expr expr) {
+        System.out.println("Analisando Expressao: " + expr);
         switch (expr) {
             // 1.1. O tipo de um literal inteiro é '{integer}'.
             // 1.2. O tipo de um literal float é '{float}'.
@@ -276,6 +409,39 @@ public class Analyser {
                     case TokenType.CHAR -> new TypedExpr.Literal(value, table.typeId(Type.CHAR));
                     default -> throw new RuntimeException("Unexpected token type: " + value.type());
                 };
+            }
+
+            // Implementar a conversão de tipos
+            case Expr.TypeConversion(Token targetTypeToken, Expr value): {
+                // Obter o tipo alvo da conversão
+                var targetType = environment.getType(targetTypeToken.lexeme());
+
+                if (targetType.isEmpty()) {
+                    error(targetTypeToken, "Tipo de destino não declarado: " + targetTypeToken.lexeme());
+                    return new TypedExpr.TypeConversionExpression(
+                            table.typeId(Type.INVALID), expression(value), table.typeId(Type.INVALID));
+                }
+
+                var targetTypeId = switch (targetType.get()) {
+                    case TypeEnvEntry.Type(Id<TypeInfo> id) -> id;
+                    case TypeEnvEntry.Record(Id<RecordInfo> recordId) -> table.records().get(recordId).get().type();
+                };
+
+                // Avaliar a expressão de origem
+                var valueExpr = expression(value);
+
+                // Verificar se a conversão é válida
+                if (!canConvert(valueExpr.type(), targetTypeId)) {
+                    error(targetTypeToken, "Conversão inválida de tipo " +
+                            table.typeDefinition(valueExpr.type()) + " para " +
+                            table.typeDefinition(targetTypeId) + ".");
+                    return new TypedExpr.TypeConversionExpression(
+                            targetTypeId, valueExpr, table.typeId(Type.INVALID));
+                }
+
+                // Retornar a expressão de conversão validada
+                return new TypedExpr.TypeConversionExpression(
+                        targetTypeId, valueExpr, targetTypeId);
             }
 
             // 2.1. Uma variável precisa estar em escopo para ser usada.
@@ -695,25 +861,71 @@ public class Analyser {
 
             case Expr.FunctionCall(Expr target, List<Expr.Argument> arguments): {
                 // Analisar o alvo da chamada
-                var targetExpr = expression(target);
+                var targetExpr = target instanceof Expr.VariableExpression varTarget ? varTarget : null;
+                if (targetExpr != null) {
+                    var targetName = targetExpr.name().lexeme();
 
-                // Verificar se o alvo é uma função
-                if (!(table.typeDefinition(targetExpr.type()) instanceof Type.Function functionType)) {
-                    error(targetExpr instanceof TypedExpr.Literal literal ? literal.value()
-                            : (targetExpr instanceof TypedExpr.VariableExpression variable ? variable.name() : null),
-                            "O alvo da chamada não é uma função.");
-                    return new TypedExpr.FunctionCall(targetExpr, List.of(), table.typeId(Type.INVALID));
+                    // Verificar se o nome é um tipo declarado no ambiente
+                    var typeEntry = environment.getType(targetName);
+                    if (typeEntry.isPresent()) {
+                        if (arguments.size() != 1) {
+                            error(targetExpr.name(), "Conversões explícitas devem ter exatamente um argumento.");
+                            return new TypedExpr.TypeConversionExpression(
+                                    table.typeId(Type.INVALID),
+                                    arguments.isEmpty() ? null : expression(arguments.get(0).value()),
+                                    table.typeId(Type.INVALID));
+                        }
+
+                        // Obter o tipo alvo
+                        var targetType = switch (typeEntry.get()) {
+                            case TypeEnvEntry.Type(Id<TypeInfo> id) -> id;
+                            default -> {
+                                error(targetExpr.name(), "Conversão explícita inválida para o tipo: " + targetName);
+                                yield table.typeId(Type.INVALID);
+                            }
+                        };
+
+                        // Analisar o valor a ser convertido
+                        var valueExpr = expression(arguments.get(0).value());
+
+                        System.out.println("Tentando conversão explícita: de "
+                                + table.typeDefinition(valueExpr.type()) + " para "
+                                + table.typeDefinition(targetType));
+
+                        // Verificar compatibilidade de tipos
+                        if (!canConvert(valueExpr.type(), targetType)) {
+                            error(targetExpr.name(), "Conversão inválida de tipo " +
+                                    table.typeDefinition(valueExpr.type()) + " para " +
+                                    table.typeDefinition(targetType) + ".");
+                            return new TypedExpr.TypeConversionExpression(
+                                    targetType, valueExpr, table.typeId(Type.INVALID));
+                        }
+
+                        System.out.println("Conversão bem-sucedida: de "
+                                + table.typeDefinition(valueExpr.type()) + " para "
+                                + table.typeDefinition(targetType));
+
+                        // Retornar a expressão de conversão explícita
+                        return new TypedExpr.TypeConversionExpression(targetType, valueExpr, targetType);
+                    }
                 }
 
-                // Verificar compatibilidade dos argumentos
+                // Caso não seja uma conversão explícita, tratar como função normal
+                var typedTarget = expression(target);
+                if (!(table.typeDefinition(typedTarget.type()) instanceof Type.Function functionType)) {
+                    error(typedTarget instanceof TypedExpr.VariableExpression variable ? variable.name() : null,
+                            "O alvo da chamada não é uma função.");
+                    return new TypedExpr.FunctionCall(typedTarget, List.of(), table.typeId(Type.INVALID));
+                }
+
+                // Analisar argumentos e verificar compatibilidade
                 var typedArguments = new ArrayList<TypedExpr.Argument>();
                 var expectedArgs = functionType.args();
 
                 if (arguments.size() != expectedArgs.size()) {
-                    error(targetExpr instanceof TypedExpr.Literal literal ? literal.value() : null,
-                            "Número incorreto de argumentos. Esperado: " + expectedArgs.size() + ", recebido: "
-                                    + arguments.size());
-                    return new TypedExpr.FunctionCall(targetExpr, List.of(), table.typeId(Type.INVALID));
+                    error(targetExpr.name(), "Número incorreto de argumentos. Esperado: " + expectedArgs.size() +
+                            ", recebido: " + arguments.size());
+                    return new TypedExpr.FunctionCall(typedTarget, List.of(), table.typeId(Type.INVALID));
                 }
 
                 for (int i = 0; i < arguments.size(); i++) {
@@ -722,15 +934,14 @@ public class Analyser {
                     var typedValue = expression(arg.value());
                     if (!compatibleTypes(typedValue.type(), table.typeId(expectedType))) {
                         error(arg.value() instanceof Expr.Literal literal ? literal.value() : null,
-                                "Tipo incompatível para o argumento " + (i + 1) + ". Esperado: " + expectedType
-                                        + ", recebido: "
-                                        + table.typeDefinition(typedValue.type()));
+                                "Tipo incompatível para o argumento " + (i + 1) + ". Esperado: " + expectedType +
+                                        ", recebido: " + table.typeDefinition(typedValue.type()));
                     }
                     typedArguments.add(new TypedExpr.Argument(arg.label(), typedValue, typedValue.type()));
                 }
 
                 // O tipo da chamada é o tipo de retorno da função
-                return new TypedExpr.FunctionCall(targetExpr, typedArguments, table.typeId(functionType.ret()));
+                return new TypedExpr.FunctionCall(typedTarget, typedArguments, table.typeId(functionType.ret()));
             }
 
             case Expr.Argument(Optional<Token> label, Expr value): {
