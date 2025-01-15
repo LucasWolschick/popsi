@@ -89,4 +89,7 @@ public sealed interface Expr {
         public static record Block(FilePosition start, List<Stmt> statements, Optional<Stmt> lastStatement)
                         implements Expr {
         }
+
+        public static record TypeConversion(Token targetType, Expr value) implements Expr {
+        }
 }

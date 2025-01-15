@@ -100,4 +100,14 @@ public sealed interface TypedExpr {
                         Id<TypeInfo> type)
                         implements TypedExpr {
         }
+
+        public static record TypeConversionExpression(
+                        Id<TypeInfo> targetType,
+                        TypedExpr value,
+                        Id<TypeInfo> resultType) implements TypedExpr {
+                @Override
+                public Id<TypeInfo> type() {
+                        return resultType;
+                }
+        }
 }

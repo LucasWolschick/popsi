@@ -60,6 +60,8 @@ public class AstPrinter {
             case Expr.DebugExpression debugExpr -> parens("debug", debugExpr.value());
             case Expr.Block block -> parens("block", block.statements(), block.lastStatement());
             case Expr.ListExpression list -> parens("list", list.elements());
+            case Expr.TypeConversion conversion ->
+                parens("convert", conversion.targetType().lexeme(), conversion.value());
             case Expr.Argument arg ->
                 arg.label().isPresent()
                         ? arg.label().get().lexeme() + ": " + print(arg.value())

@@ -90,6 +90,26 @@ public class SymbolTable {
         return types().get(id).get().type();
     }
 
+    public void printSymbolTable() {
+        System.out.println("Tabela de Símbolos:");
+        System.out.println("Funções:");
+        functions.map.forEach((id, functionInfo) -> System.out
+                .println("Nome: " + functionInfo.name() + ", Tipo: " + typeDefinition(functionInfo.type())));
+
+        System.out.println("\nRegistros:");
+        records.map.forEach((id, recordInfo) -> System.out
+                .println("Nome: " + recordInfo.name() + ", Tipo: " + typeDefinition(recordInfo.type())));
+
+        System.out.println("\nVariáveis Locais:");
+        locals.map.forEach((id, localInfo) -> System.out
+                .println("Nome: " + localInfo.name() + ", Tipo: " + typeDefinition(localInfo.type())));
+
+        System.out.println("\nTipos:");
+        types.map.forEach((id, typeInfo) -> System.out.println("ID: " + id.id() + ", Tipo: " + typeInfo.type()));
+
+        System.out.println("Fim da Tabela de Símbolos");
+    }
+
     // public void printSymbolTable() {
     // System.out.println("Tabela de Símbolos:");
     // System.out.println("Funções:");
