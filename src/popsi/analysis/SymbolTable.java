@@ -93,15 +93,15 @@ public class SymbolTable {
     public void printSymbolTable() {
         System.out.println("Tabela de Símbolos:");
         System.out.println("Funções:");
-        functions.map.forEach((id, functionInfo) -> System.out
+        functions.map.forEach((_, functionInfo) -> System.out
                 .println("Nome: " + functionInfo.name() + ", Tipo: " + typeDefinition(functionInfo.type())));
 
         System.out.println("\nRegistros:");
-        records.map.forEach((id, recordInfo) -> System.out
+        records.map.forEach((_, recordInfo) -> System.out
                 .println("Nome: " + recordInfo.name() + ", Tipo: " + typeDefinition(recordInfo.type())));
 
         System.out.println("\nVariáveis Locais:");
-        locals.map.forEach((id, localInfo) -> System.out
+        locals.map.forEach((_, localInfo) -> System.out
                 .println("Nome: " + localInfo.name() + ", Tipo: " + typeDefinition(localInfo.type())));
 
         System.out.println("\nTipos:");

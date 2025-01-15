@@ -1,6 +1,5 @@
 package popsi.analysis;
 
-import popsi.analysis.Type.TypeAlgebra;
 import popsi.analysis.typed_ast.TypedExpr;
 import popsi.analysis.typed_ast.TypedStmt;
 
@@ -22,8 +21,8 @@ public class Cfa {
     // returns true if all paths return the expected type
     private CfaResult visitExpr(TypedExpr expr, Type expected) {
         return switch (expr) {
-            case TypedExpr.Literal l -> CfaResult.CONTINUE;
-            case TypedExpr.VariableExpression var -> CfaResult.CONTINUE;
+            case TypedExpr.Literal _ -> CfaResult.CONTINUE;
+            case TypedExpr.VariableExpression _ -> CfaResult.CONTINUE;
             case TypedExpr.ListExpression list -> {
                 for (TypedExpr element : list.elements()) {
                     var result = visitExpr(element, expected);
@@ -124,7 +123,13 @@ public class Cfa {
                     yield CfaResult.RETURNED_OTHER;
                 }
             }
-            case TypedExpr.DebugExpression debug -> CfaResult.CONTINUE;
+            case TypedExpr.DebugExpression debug -> {
+                var result = visitExpr(debug.value(), expected);
+                if (result != CfaResult.CONTINUE) {
+                    yield result;
+                }
+                yield CfaResult.CONTINUE;
+            }
             case TypedExpr.Block block -> {
                 for (TypedStmt stmt : block.statements()) {
                     var result = visitStmt(stmt, expected);
