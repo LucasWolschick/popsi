@@ -90,12 +90,24 @@ public class Analyser {
         var functions = new ArrayList<TypedAst.Function>();
         var records = new ArrayList<TypedAst.Rec>();
 
+        // primeiro registra os índices dos tipos.
+        var recordIds = new ArrayList<Id<RecordInfo>>();
         for (var record : program.records()) {
-            records.add(rec(record));
+            recordIds.add(declareRec(record));
         }
 
+        var functionIds = new ArrayList<Id<FunctionInfo>>();
         for (var function : program.functions()) {
-            functions.add(function(function));
+            functionIds.add(declareFunction(function));
+        }
+
+        // depois, faz a análise dos tipos efetivamente.
+        for (int i = 0; i < program.records().size(); i++) {
+            records.add(defineRec(recordIds.get(i), program.records().get(i)));
+        }
+
+        for (int i = 0; i < program.functions().size(); i++) {
+            functions.add(defineFunction(functionIds.get(i), program.functions().get(i)));
         }
 
         // table.printSymbolTable();
@@ -143,7 +155,21 @@ public class Analyser {
         return new TypedExpr.Block(block.start(), typedStatements, lastTypedStatement, blockType);
     }
 
-    private TypedAst.Function function(Ast.Function function) {
+    private Id<FunctionInfo> declareFunction(Ast.Function function) {
+        // Declara função na tabela de símbolos
+        var functionTypeId = table.types().nextId();
+        var functionInfoId = table.functions().nextId();
+        var functionInfo = new FunctionInfo(function.name().lexeme(), functionTypeId);
+        table.functions().insert(functionInfoId, functionInfo);
+
+        // Registrar a função no escopo externo
+        if (environment.get(functionInfo.name()).isPresent()) {
+            error(function.name(), "Função '" + functionInfo.name() + "' já foi declarada.");
+        } else {
+            environment.put(functionInfo.name(), new EnvEntry.Function(functionInfoId));
+        }
+
+        // Analisa parâmetros
         var parameters = new ArrayList<TypedAst.Parameter>();
 
         // Resolver os tipos dos parâmetros
@@ -155,22 +181,33 @@ public class Analyser {
         // Resolver o tipo de retorno
         var returnType = function.returnType().map(this::typeAst).orElse(table.typeId(Type.UNIT));
 
-        // Registrar a função na tabela de símbolos
+        // Registrar o tipo da função na tabela de símbolos
         var functionType = new Type.Function(
                 parameters.stream().map(x -> table.typeDefinition(x.type())).toList(),
                 table.typeDefinition(returnType));
-        var functionTypeId = table.typeId(functionType);
-        var functionInfo = new FunctionInfo(function.name().lexeme(), functionTypeId);
-        var functionId = table.functions().insert(functionInfo);
+        table.types().insert(functionTypeId, new TypeInfo(functionType));
 
-        // Registrar a função no escopo externo
-        environment.put(functionInfo.name(), new EnvEntry.Function(functionId));
+        return functionInfoId;
+    }
+
+    private TypedAst.Function defineFunction(Id<FunctionInfo> functionInfoId, Ast.Function function) {
+        // Analisa parâmetros
+        var parameters = new ArrayList<TypedAst.Parameter>();
+
+        // Resolver os tipos dos parâmetros (novamente...)
+        for (var param : function.parameters()) {
+            var type = typeAst(param.type());
+            parameters.add(new TypedAst.Parameter(param.name(), param.type(), type));
+        }
+
+        // Resolver o tipo de retorno
+        var returnType = function.returnType().map(this::typeAst).orElse(table.typeId(Type.UNIT));
 
         // Criar escopo para a função
         environment = new Environment(environment);
 
         // Seta função como ativa
-        currentFunction = Optional.of(functionId);
+        currentFunction = Optional.of(functionInfoId);
 
         // Cria uma variável local para cada parâmetro
         for (var param : parameters) {
@@ -198,10 +235,32 @@ public class Analyser {
                     + table.typeDefinition(bodyExpr.type()));
         }
 
-        return new TypedAst.Function(function.name(), parameters, function.returnType(), bodyExpr, functionId);
+        return new TypedAst.Function(function.name(), parameters, function.returnType(), bodyExpr, functionInfoId);
     }
 
-    private TypedAst.Rec rec(Ast.Rec rec) {
+    private Id<RecordInfo> declareRec(Ast.Rec rec) {
+        // insere o rec na tabela de símbolos
+        var recTypeId = table.types().nextId();
+        var recInfoId = table.records().nextId();
+        var recInfo = new RecordInfo(rec.name().lexeme(), recTypeId);
+        table.records().insert(recInfoId, recInfo);
+
+        // insere o rec no environment
+        if (environment.getType(rec.name().lexeme()).isPresent()) {
+            error(rec.name(), "Tipo '" + rec.name().lexeme() + "' já foi declarado.");
+        } else {
+            environment.putType(recInfo.name(), new TypeEnvEntry.Record(recInfoId));
+        }
+
+        return recInfoId;
+    }
+
+    private TypedAst.Rec defineRec(Id<RecordInfo> recInfoId, Ast.Rec rec) {
+        // recupera índices declarados
+        var recInfo = table.records().get(recInfoId).get();
+        var recTypeId = recInfo.type();
+
+        // computa e valida campos
         var fields = new ArrayList<TypedAst.RecField>();
         var parameters = new ArrayList<TypedAst.Parameter>();
 
@@ -211,15 +270,10 @@ public class Analyser {
             parameters.add(new TypedAst.Parameter(field.name(), field.type(), type));
         }
 
-        // insere na tabela de símbolos
+        // insere o tipo na tabela de símbolos
         var recType = new Type.Record(rec.name().lexeme(), fields.stream().map(f -> f.name().lexeme()).toList(),
                 fields.stream().map(f -> table.typeDefinition(f.type())).toList());
-        var recTypeId = table.typeId(recType);
-        var recInfo = new RecordInfo(rec.name().lexeme(), recTypeId);
-        var recInfoId = table.records().insert(recInfo);
-
-        // insere o tipo no environment
-        environment.putType(recInfo.name(), new TypeEnvEntry.Record(recInfoId));
+        table.types().insert(recTypeId, new TypeInfo(recType));
 
         // registra construtores
         var constructorType = new Type.Function(
