@@ -88,11 +88,14 @@ public sealed interface TypedExpr {
         }
 
         // Retorno
-        public static record ReturnExpression(TypedExpr value, Id<TypeInfo> type) implements TypedExpr {
+        public static record ReturnExpression(Optional<TypedExpr> value, Id<TypeInfo> type) implements TypedExpr {
         }
 
         // Debug
         public static record DebugExpression(TypedExpr value, Id<TypeInfo> type) implements TypedExpr {
+        }
+
+        public static record ReadExpression(List<TypedExpr> variables, Id<TypeInfo> type) implements TypedExpr {
         }
 
         // Bloco -> "{" comando (";" comando)* ";"? "}"

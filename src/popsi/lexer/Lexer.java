@@ -155,6 +155,14 @@ public class Lexer {
                     error("Símbolo não reconhecido (encontrado '|', você não quis dizer '||'?)");
                 }
                 return;
+            case "\"":
+                string();
+                return;
+
+            case "\'":
+                charLiteral();
+                return;
+
             // espaço em branco
             case " ":
             case "\t":
@@ -163,10 +171,6 @@ public class Lexer {
                 while (isWhitespace(peek())) {
                     next();
                 }
-                return;
-
-            case "\"":
-                string();
                 return;
 
             // demais
@@ -181,6 +185,58 @@ public class Lexer {
                 return;
             }
 
+        }
+    }
+
+    private void charLiteral() {
+
+        // Verifica algo depois do '
+        if (atEof() || peek().equals("\n")) {
+            error("Caractere não fechado");
+            return;
+        }
+
+        if (peek().equals("\\")) {
+            charEscape();
+        } else {
+            next();
+        }
+
+        if (!match("\'")) {
+            error("Esperado ' para fechar o literal de char.");
+            return;
+        }
+
+        var literal = src.substring(begin + 1, current - 1);
+        literal = literal.replace("\\n", "\n")
+                .replace("\\r", "\r")
+                .replace("\\t", "\t")
+                .replace("\\\'", "\'")
+                .replace("\\\\", "\\");
+
+        if ((literal.length() != 1)) {
+            error("Literal de char deve conter exatamente um caractere");
+            return;
+        }
+
+        token(TokenType.CHAR, literal);
+
+    }
+
+    private void charEscape() {
+        next();
+        switch (peek()) {
+            case "\'":
+            case "\\":
+            case "n":
+            case "r":
+            case "t":
+                next();
+                break;
+            default:
+                error("Escape inválido");
+                next();
+                break;
         }
     }
 
@@ -268,6 +324,9 @@ public class Lexer {
                 break;
             case "false":
                 token(TokenType.FALSE);
+                break;
+            case "read":
+                token(TokenType.READ);
                 break;
             default:
                 token(TokenType.IDENTIFIER);

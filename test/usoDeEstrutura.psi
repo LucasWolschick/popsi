@@ -8,6 +8,7 @@ fn main() {
     let pessoa1: Pessoa = Pessoa(nome: "Pedro", cpf: 12345612345);
     pessoa1.idade = 19;
 
+
     debug pessoa1.nome;
     debug pessoa1.idade;
     debug pessoa1.cpf;

@@ -23,6 +23,7 @@ import popsi.parser.ast.Expr.IfExpression;
 import popsi.parser.ast.Expr.ListAccess;
 import popsi.parser.ast.Expr.ListExpression;
 import popsi.parser.ast.Expr.Literal;
+import popsi.parser.ast.Expr.ReadExpression;
 import popsi.parser.ast.Expr.RecAccess;
 import popsi.parser.ast.Expr.ReturnExpression;
 import popsi.parser.ast.Expr.UnaryExpression;
@@ -290,6 +291,7 @@ public class Parser {
     }
 
     private Expr ifExpression() {
+        Token ifToken = previous();
         Expr condition = expression();
         Block thenBranch = block();
         Optional<Expr> elseBranch = Optional.empty();
@@ -300,7 +302,7 @@ public class Parser {
                 elseBranch = Optional.of(block());
 
         }
-        return new IfExpression(condition, thenBranch, elseBranch);
+        return new IfExpression(ifToken, condition, thenBranch, elseBranch);
     }
 
     private Expr loop() {
@@ -315,26 +317,52 @@ public class Parser {
     }
 
     private Expr forExpression() {
+        Token forToken = previous();
         Token variable = consume(TokenType.IDENTIFIER, "Esperado nome da variável após 'for'");
         consume(TokenType.COLON, "Esperado ':' após o nome da variável no loop 'for'");
         var type = type();
         consume(TokenType.IN, "Esperado 'in' para indicar o intervalo do loop 'for'");
         Expr range = expression();
         Block body = block();
-        return new ForExpression(variable, type, range, body);
+        return new ForExpression(forToken, variable, type, range, body);
+    }
+
+    private Expr readExpression() {
+        var read = previous();
+        consume(TokenType.L_PAREN, "Esperado '(' após 'read'");
+        List<Expr> variables = new ArrayList<>();
+
+        if (peek().type() != TokenType.R_PAREN) {
+            do {
+                if (!match(TokenType.IDENTIFIER)) {
+                    throw error("Esperado nome da variável após 'read'");
+                }
+                variables.add(new VariableExpression(previous()));
+            } while (match(TokenType.COMMA));
+        }
+
+        consume(TokenType.R_PAREN, "Esperado ')' após a lista de variáveis");
+        return new ReadExpression(read, variables);
     }
 
     private Expr whileExpression() {
+        var whileToken = previous();
         Expr condition = expression();
         Block body = block();
-        return new WhileExpression(condition, body);
+        return new WhileExpression(whileToken, condition, body);
     }
 
     private Expr blocklessExpression() {
         if (match(TokenType.RETURN)) {
-            return new ReturnExpression(expression());
+            if (peek().type() == TokenType.SEMICOLON) {
+                return new ReturnExpression(previous(), Optional.empty());
+            } else {
+                return new ReturnExpression(previous(), Optional.of(expression()));
+            }
         } else if (match(TokenType.DEBUG)) {
-            return new DebugExpression(expression());
+            return new DebugExpression(previous(), expression());
+        } else if (match(TokenType.READ)) {
+            return readExpression();
         } else {
             return attribution();
         }
@@ -462,7 +490,8 @@ public class Parser {
     }
 
     private Expr primary() {
-        if (match(TokenType.INTEGER, TokenType.FLOAT, TokenType.TRUE, TokenType.FALSE, TokenType.STRING)) {
+        if (match(TokenType.INTEGER, TokenType.FLOAT, TokenType.TRUE, TokenType.FALSE, TokenType.STRING,
+                TokenType.CHAR)) {
             return new Literal(previous());
         } else if (match(TokenType.IDENTIFIER)) {
             return new VariableExpression(previous());

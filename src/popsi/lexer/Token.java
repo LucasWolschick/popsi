@@ -19,7 +19,7 @@ public record Token(String lexeme, TokenType type, FilePosition where, Object li
         OR, AND,
 
         // palavras reservadas
-        FN, LET, FOR, WHILE, RETURN, IF, DEBUG, ELSE, IN, TRUE, FALSE, REC,
+        FN, LET, FOR, WHILE, RETURN, IF, DEBUG, ELSE, IN, TRUE, FALSE, REC, READ,
 
         // literais
         IDENTIFIER, INTEGER, FLOAT, STRING, CHAR,
