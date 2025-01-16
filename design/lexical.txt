@@ -1,4 +1,6 @@
-TOKENS -> "(" | ")"
+PROGRAM -> TOKEN* EOF
+
+TOKEN  -> "(" | ")"
         | "[" | "]"
         | "{" | "}"
         | ":"
@@ -16,6 +18,7 @@ TOKENS -> "(" | ")"
         | "<"
         | ">"
         | "."
+        | "->"
         | "=="
         | "%="
         | "!="
@@ -26,15 +29,15 @@ TOKENS -> "(" | ")"
         | "^="
         | "<="
         | ">="
+        | ".."
         | "||"
         | "&&"
-        | "fn" | "let" | "for" | "while" | "return" | "if" | "debug" | "else" | "in" | "true" | "false"
+        | "fn" | "let" | "for" | "while" | "return" | "if" | "debug" | "else" | "in" | "true" | "false" | "rec" | "read"
         | IDENTIFIER
         | INTEGER
         | FLOAT
         | STRING
         | CHAR
-        | EOF
 
 IDENTIFIER -> <identifierBegin> <identifierContinue>*
 
@@ -46,7 +49,14 @@ FLOAT -> DIGIT+ "." DIGIT+
 
 STRING -> "\"" STRING_CONTENT* "\""
 
-STRING_CONTENT -> <any character except " or \>
-                | "\" ESCAPE_SEQUENCE
+STRING_CONTENT -> <qualquer caractere exceto " e \>
+                | "\" STRING_ESCAPE_SEQUENCE
 
-ESCAPE_SEQUENCE -> "n" | "t" | "r" | "\" | """
+STRING_ESCAPE_SEQUENCE -> "n" | "t" | "r" | "\" | "\""
+
+CHAR -> "'" CHAR_CONTENT "'"
+
+CHAR_CONTENT -> <qualquer caractere exceto ' e \>
+              | "\" CHAR_ESCAPE_SEQUENCE
+
+CHAR_ESCAPE_SEQUENCE -> "n" | "t" | "r" | "\" | "'"

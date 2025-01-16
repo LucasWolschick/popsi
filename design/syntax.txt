@@ -1,4 +1,4 @@
-<program>       -> ( <function> | <record>)* EOF
+<program>       -> ( <function> | <record> )* EOF
 
 <function>      -> "fn" IDENTIFIER "(" <parameters>? ")" ("->" <type>)? <block>
 <parameters>    -> <parameter> ("," <parameter>)*
@@ -14,7 +14,6 @@
 
 <statement>     -> <declaration>
                  | <expr_stmt>
-                 | <rec_field>
 
 <declaration>   -> "let" IDENTIFIER ":" <type> "=" <expression> ";"
 
@@ -34,8 +33,9 @@
                  | "while" <expression> <block>
 
 <blockless_expr> -> <attribution>
-	             | "return" <expression>
+	             | "return" <expression>?
 	             | "debug" <expression>
+                 | "read" "(" (( <expression> ",")* <expression>)? ")"
 
 <attribution>   -> <range> (<attrib_op> <attribution>)?                                 // associativo pela direita
 <range>         -> <logic_or> (".." <logic_or>)?
@@ -44,11 +44,11 @@
 <equality>      -> <comparison> ( ( "!=" | "==" ) <comparison> )*
 <comparison>    -> <term> ( ( ">" | ">=" | "<" | "<=" ) <term> )*
 <term>          -> <factor> ( ( "-" | "+" ) <factor> )*
-<factor>        -> <exponent> ( ( "" | "/" ) <exponent> )*
+<factor>        -> <exponent> ( ( "*" | "/" | "%" ) <exponent> )*
 <exponent>      -> <unary> ("^" <exponent>)?                                            // associativo pela direita
 <unary>         -> ("!" | "-" | "#") <unary> | <call>                                   // associativo pela direita
 <call>          -> <primary> ( "(" arg_list? ")" | "[" <expression> "]" | "." IDENTIFIER )*
-<primary>       -> "true" | "false" | NUMBER | STRING | IDENTIFIER
+<primary>       -> "true" | "false" | INTEGER | FLOAT | STRING | IDENTIFIER | CHAR
                  | "(" <expression> ")"
                  | <list>
 
@@ -61,4 +61,4 @@
 
 <type>          -> "[" <type> "]" | IDENTIFIER
 
-<attrib_op>     -> "=" | "+=" | "-=" | "*=" | "/=" | "^="
+<attrib_op>     -> "=" | "%=" | "+=" | "-=" | "*=" | "/=" | "^="

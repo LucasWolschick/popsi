@@ -239,16 +239,11 @@ public class Parser {
         Token name = consume(TokenType.IDENTIFIER, "Esperado nome da variável após 'let'");
         consume(TokenType.COLON, "Esperado ':' após o nome da variável");
         var type = type();
-        if (match(TokenType.EQUAL)) {
-            Expr value = expression();
-            consume(TokenType.SEMICOLON, "Esperado ';' após a declaração da variável");
-            ateSemi = true;
-            return new Declaration(name, type, Optional.of(value));
-        } else {
-            consume(TokenType.SEMICOLON, "Esperado ';' após a declaração da variável");
-            ateSemi = true;
-            return new Declaration(name, type, Optional.empty());
-        }
+        consume(TokenType.EQUAL, "Toda variável declarada deve ser inicializada");
+        Expr value = expression();
+        consume(TokenType.SEMICOLON, "Esperado ';' após a declaração da variável");
+        ateSemi = true;
+        return new Declaration(name, type, Optional.of(value));
     }
 
     private Stmt exprStmt() {
@@ -334,10 +329,7 @@ public class Parser {
 
         if (peek().type() != TokenType.R_PAREN) {
             do {
-                if (!match(TokenType.IDENTIFIER)) {
-                    throw error("Esperado nome da variável após 'read'");
-                }
-                variables.add(new VariableExpression(previous()));
+                variables.add(expression());
             } while (match(TokenType.COMMA));
         }
 
@@ -354,7 +346,7 @@ public class Parser {
 
     private Expr blocklessExpression() {
         if (match(TokenType.RETURN)) {
-            if (peek().type() == TokenType.SEMICOLON) {
+            if (peek().type() == TokenType.SEMICOLON || peek().type() == TokenType.R_CURLY) {
                 return new ReturnExpression(previous(), Optional.empty());
             } else {
                 return new ReturnExpression(previous(), Optional.of(expression()));
