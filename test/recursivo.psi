@@ -1,0 +1,19 @@
+fn main() {
+    debug par(10);
+}
+
+fn par(x: u32) -> bool {
+    if x == 0 {
+        true
+    } else {
+        !impar(x - 1)
+    }
+}
+
+fn impar(x: u32) -> bool {
+    if x == 0 {
+        false
+    } else {
+        !par(x - 1)
+    }
+}
