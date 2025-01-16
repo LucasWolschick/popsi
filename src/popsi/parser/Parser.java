@@ -291,6 +291,7 @@ public class Parser {
     }
 
     private Expr ifExpression() {
+        Token ifToken = previous();
         Expr condition = expression();
         Block thenBranch = block();
         Optional<Expr> elseBranch = Optional.empty();
@@ -301,7 +302,7 @@ public class Parser {
                 elseBranch = Optional.of(block());
 
         }
-        return new IfExpression(condition, thenBranch, elseBranch);
+        return new IfExpression(ifToken, condition, thenBranch, elseBranch);
     }
 
     private Expr loop() {
@@ -316,16 +317,18 @@ public class Parser {
     }
 
     private Expr forExpression() {
+        Token forToken = previous();
         Token variable = consume(TokenType.IDENTIFIER, "Esperado nome da variável após 'for'");
         consume(TokenType.COLON, "Esperado ':' após o nome da variável no loop 'for'");
         var type = type();
         consume(TokenType.IN, "Esperado 'in' para indicar o intervalo do loop 'for'");
         Expr range = expression();
         Block body = block();
-        return new ForExpression(variable, type, range, body);
+        return new ForExpression(forToken, variable, type, range, body);
     }
 
     private Expr readExpression() {
+        var read = previous();
         consume(TokenType.L_PAREN, "Esperado '(' após 'read'");
         List<Expr> variables = new ArrayList<>();
 
@@ -339,13 +342,14 @@ public class Parser {
         }
 
         consume(TokenType.R_PAREN, "Esperado ')' após a lista de variáveis");
-        return new ReadExpression(variables);
+        return new ReadExpression(read, variables);
     }
 
     private Expr whileExpression() {
+        var whileToken = previous();
         Expr condition = expression();
         Block body = block();
-        return new WhileExpression(condition, body);
+        return new WhileExpression(whileToken, condition, body);
     }
 
     private Expr blocklessExpression() {
@@ -356,7 +360,7 @@ public class Parser {
                 return new ReturnExpression(previous(), Optional.of(expression()));
             }
         } else if (match(TokenType.DEBUG)) {
-            return new DebugExpression(expression());
+            return new DebugExpression(previous(), expression());
         } else if (match(TokenType.READ)) {
             return readExpression();
         } else {
@@ -474,10 +478,9 @@ public class Parser {
                 consume(TokenType.R_BRACKET, "Esperado ']' após o índice");
                 expr = new ListAccess(expr, place);
             } else if (previous().type() == TokenType.L_PAREN) {
-                Token parens = previous();
                 List<Argument> args = argList();
                 consume(TokenType.R_PAREN, "Esperado ')'");
-                expr = new FunctionCall(parens, expr, args);
+                expr = new FunctionCall(expr, args);
             } else if (previous().type() == TokenType.DOT) {
                 var place = consume(TokenType.IDENTIFIER, "Esperado nome do campo");
                 expr = new RecAccess(expr, place);
