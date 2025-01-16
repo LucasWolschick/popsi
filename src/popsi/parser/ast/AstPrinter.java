@@ -61,8 +61,6 @@ public class AstPrinter {
             case Expr.ReadExpression readExpr -> parens("read", readExpr.variables());
             case Expr.Block block -> parens("block", block.statements(), block.lastStatement());
             case Expr.ListExpression list -> parens("list", list.elements());
-            case Expr.TypeConversion conversion ->
-                parens("convert", conversion.targetType().lexeme(), conversion.value());
             case Expr.Argument arg ->
                 arg.label().isPresent()
                         ? arg.label().get().lexeme() + ": " + print(arg.value())

@@ -350,7 +350,11 @@ public class Parser {
 
     private Expr blocklessExpression() {
         if (match(TokenType.RETURN)) {
-            return new ReturnExpression(expression());
+            if (peek().type() == TokenType.SEMICOLON) {
+                return new ReturnExpression(previous(), Optional.empty());
+            } else {
+                return new ReturnExpression(previous(), Optional.of(expression()));
+            }
         } else if (match(TokenType.DEBUG)) {
             return new DebugExpression(expression());
         } else if (match(TokenType.READ)) {
@@ -470,9 +474,10 @@ public class Parser {
                 consume(TokenType.R_BRACKET, "Esperado ']' após o índice");
                 expr = new ListAccess(expr, place);
             } else if (previous().type() == TokenType.L_PAREN) {
+                Token parens = previous();
                 List<Argument> args = argList();
                 consume(TokenType.R_PAREN, "Esperado ')'");
-                expr = new FunctionCall(expr, args);
+                expr = new FunctionCall(parens, expr, args);
             } else if (previous().type() == TokenType.DOT) {
                 var place = consume(TokenType.IDENTIFIER, "Esperado nome do campo");
                 expr = new RecAccess(expr, place);

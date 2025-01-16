@@ -31,6 +31,7 @@ public sealed interface Expr {
 
         // Chamada de Função -> identificador ( argumentos? )
         public static record FunctionCall(
+                        Token parens,
                         Expr target,
                         List<Argument> arguments) implements Expr {
         }
@@ -78,21 +79,19 @@ public sealed interface Expr {
         }
 
         // Retorno
-        public static record ReturnExpression(Expr value) implements Expr {
+        public static record ReturnExpression(Token keyword, Optional<Expr> value) implements Expr {
         }
 
         // Debug
         public static record DebugExpression(Expr value) implements Expr {
         }
 
+        // Read
         public static record ReadExpression(List<Expr> variables) implements Expr {
         }
 
         // Bloco -> "{" comando (";" comando)* ";"? "}"
         public static record Block(FilePosition start, List<Stmt> statements, Optional<Stmt> lastStatement)
                         implements Expr {
-        }
-
-        public static record TypeConversion(Token targetType, Expr value) implements Expr {
         }
 }

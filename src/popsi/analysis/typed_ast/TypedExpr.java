@@ -88,7 +88,7 @@ public sealed interface TypedExpr {
         }
 
         // Retorno
-        public static record ReturnExpression(TypedExpr value, Id<TypeInfo> type) implements TypedExpr {
+        public static record ReturnExpression(Optional<TypedExpr> value, Id<TypeInfo> type) implements TypedExpr {
         }
 
         // Debug
@@ -102,15 +102,5 @@ public sealed interface TypedExpr {
         public static record Block(FilePosition start, List<TypedStmt> statements, Optional<TypedStmt> lastStatement,
                         Id<TypeInfo> type)
                         implements TypedExpr {
-        }
-
-        public static record TypeConversionExpression(
-                        Id<TypeInfo> targetType,
-                        TypedExpr value,
-                        Id<TypeInfo> resultType) implements TypedExpr {
-                @Override
-                public Id<TypeInfo> type() {
-                        return resultType;
-                }
         }
 }

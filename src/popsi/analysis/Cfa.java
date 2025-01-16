@@ -96,7 +96,8 @@ public class Cfa {
                             ? CfaResult.RETURNED_TYPE
                             : CfaResult.RETURNED_OTHER;
                 } else {
-                    yield thenBranch;
+                    // we can't ensure that the then branch will be taken
+                    yield CfaResult.CONTINUE;
                 }
             }
             case TypedExpr.WhileExpression whileExpr -> {
@@ -111,7 +112,15 @@ public class Cfa {
                 yield CfaResult.CONTINUE;
             }
             case TypedExpr.ReturnExpression ret -> {
-                if (visitExpr(ret.value(), expected) == CfaResult.RETURNED_TYPE) {
+                if (!ret.value().isPresent()) {
+                    if (table.typeDefinition(ret.type()).equals(expected)) {
+                        yield CfaResult.RETURNED_TYPE;
+                    } else {
+                        yield CfaResult.RETURNED_OTHER;
+                    }
+                }
+
+                if (visitExpr(ret.value().get(), expected) == CfaResult.RETURNED_TYPE) {
                     yield CfaResult.RETURNED_TYPE;
                 }
 
@@ -163,10 +172,12 @@ public class Cfa {
                 }
                 yield CfaResult.CONTINUE;
             }
-            case TypedExpr.TypeConversionExpression conv -> {
-                var result = visitExpr(conv.value(), expected);
-                if (result != CfaResult.CONTINUE) {
-                    yield result;
+            case TypedExpr.ReadExpression read -> {
+                for (TypedExpr arg : read.variables()) {
+                    var result = visitExpr(arg, expected);
+                    if (result != CfaResult.CONTINUE) {
+                        yield result;
+                    }
                 }
                 yield CfaResult.CONTINUE;
             }

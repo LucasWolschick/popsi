@@ -1,5 +1,6 @@
 fn main() {
-    let vetor: [i32] = [];
+    let x: i8 = 10;
+    let vetor: [i32] = [i32(x), 10];
     for i: i32 in 0..(#vetor) {
         1
     }

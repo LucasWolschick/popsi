@@ -1,5 +1,5 @@
 // Conta quantos elementos pares tem num vetor.
-fn conta_pares(vetor: [i32]) {
+fn conta_pares(vetor: [i32]) -> i32 {
     let count: i32 = 0;
 
     for i: i32 in 0..#vetor {
@@ -104,38 +104,3 @@ fn main() {
 // ;
 // }
 // EOF
-
-
-
-// inverte umna lista de numeros utilizando a propria lista 
-
-fn inverte_lista(lista: [i32]) {
-    let start: i32 = 0;
-    let end: i32 = #lista - 1;
-    let aux: i32;
-
-    for i: i32 in 0..(#vetor / 2) {
-        aux = vetor[start];
-        vetor[start] = vetor[end];
-        vetor[end] = aux;
-        start += 1;
-        end -= 1;
-    }
-
-    return vetor;
-}
-
-
-// Fatorial
-
-fn fatorial(n: i32) -> i64 {
-
-    if n == 0 {
-        return 1;
-    }
-    else {
-        return n * fatorial(n - 1);
-    }
-
-}
-

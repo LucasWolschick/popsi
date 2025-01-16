@@ -24,6 +24,7 @@ import popsi.lexer.Token;
 import popsi.lexer.Token.TokenType;
 import popsi.parser.ast.Expr;
 import popsi.parser.ast.Ast;
+import popsi.parser.ast.AstPrinter;
 import popsi.parser.ast.Stmt;
 import popsi.parser.ast.TypeAst;
 
@@ -32,9 +33,8 @@ public class Analyser {
         var analyser = new Analyser();
         var typedProgram = analyser.program(program);
 
-        analyser.table.printSymbolTable();
-
         if (analyser.errors.isEmpty()) {
+            analyser.table.printSymbolTable();
             return new Result.Success<>(typedProgram);
         } else {
             return new Result.Error<>(analyser.errors);
@@ -71,11 +71,20 @@ public class Analyser {
         }
 
         // tipos que não são inseridos no environment
-        for (var type : List.of(Type.ANY, Type.INVALID, Type.I_LITERAL, Type.F_LITERAL)) {
+        for (var type : List.of(Type.ANY, Type.INVALID, Type.I_LITERAL, Type.F_LITERAL, Type.NUMERIC, Type.NOTHING)) {
             table.types().insert(new TypeInfo(type));
         }
 
-        // TODO: registrar construtores dos tipos...
+        // registra conversões numéricas
+        for (var type : List.of(
+                Type.U8, Type.U16, Type.U32, Type.U64,
+                Type.I8, Type.I16, Type.I32, Type.I64,
+                Type.F32, Type.F64)) {
+            var constructorType = new Type.Function(List.of(Type.NUMERIC), type);
+            var constructorTypeId = table.typeId(constructorType);
+            var constructorInfo = new FunctionInfo(type.name(), constructorTypeId);
+            environment.put(type.name(), new EnvEntry.Function(table.functions().insert(constructorInfo)));
+        }
     }
 
     private TypedAst.Program program(Ast.Program program) {
@@ -214,7 +223,7 @@ public class Analyser {
         // insere o tipo no environment
         environment.putType(recInfo.name(), new TypeEnvEntry.Record(recInfoId));
 
-        // TODO: registrar construtores
+        // registra construtores
         var constructorType = new Type.Function(
                 parameters.stream().map(p -> table.typeDefinition(p.type())).toList(),
                 table.typeDefinition(recTypeId));
@@ -409,7 +418,6 @@ public class Analyser {
     }
 
     private TypedExpr expression(Expr expr) {
-        System.out.println("Analisando Expressao: " + expr);
         switch (expr) {
             // 1.1. O tipo de um literal inteiro é '{integer}'.
             // 1.2. O tipo de um literal float é '{float}'.
@@ -422,41 +430,10 @@ public class Analyser {
                     case TokenType.FLOAT -> new TypedExpr.Literal(value, table.typeId(Type.F_LITERAL));
                     case TokenType.STRING -> new TypedExpr.Literal(value, table.typeId(Type.STR));
                     case TokenType.CHAR -> new TypedExpr.Literal(value, table.typeId(Type.CHAR));
+                    case TokenType.TRUE -> new TypedExpr.Literal(value, table.typeId(Type.BOOLEAN));
+                    case TokenType.FALSE -> new TypedExpr.Literal(value, table.typeId(Type.BOOLEAN));
                     default -> throw new RuntimeException("Unexpected token type: " + value.type());
                 };
-            }
-
-            // Implementar a conversão de tipos
-            case Expr.TypeConversion(Token targetTypeToken, Expr value): {
-                // Obter o tipo alvo da conversão
-                var targetType = environment.getType(targetTypeToken.lexeme());
-
-                if (targetType.isEmpty()) {
-                    error(targetTypeToken, "Tipo de destino não declarado: " + targetTypeToken.lexeme());
-                    return new TypedExpr.TypeConversionExpression(
-                            table.typeId(Type.INVALID), expression(value), table.typeId(Type.INVALID));
-                }
-
-                var targetTypeId = switch (targetType.get()) {
-                    case TypeEnvEntry.Type(Id<TypeInfo> id) -> id;
-                    case TypeEnvEntry.Record(Id<RecordInfo> recordId) -> table.records().get(recordId).get().type();
-                };
-
-                // Avaliar a expressão de origem
-                var valueExpr = expression(value);
-
-                // Verificar se a conversão é válida
-                if (!canConvert(valueExpr.type(), targetTypeId)) {
-                    error(targetTypeToken, "Conversão inválida de tipo " +
-                            table.typeDefinition(valueExpr.type()) + " para " +
-                            table.typeDefinition(targetTypeId) + ".");
-                    return new TypedExpr.TypeConversionExpression(
-                            targetTypeId, valueExpr, table.typeId(Type.INVALID));
-                }
-
-                // Retornar a expressão de conversão validada
-                return new TypedExpr.TypeConversionExpression(
-                        targetTypeId, valueExpr, targetTypeId);
             }
 
             // 2.1. Uma variável precisa estar em escopo para ser usada.
@@ -486,7 +463,8 @@ public class Analyser {
             // 3.3. O valor de uma lista é a própria lista.
             case Expr.ListExpression(FilePosition position, List<Expr> elements): {
                 if (elements.isEmpty()) {
-                    return new TypedExpr.ListExpression(position, List.of(), table.typeId(Type.ANY));
+                    return new TypedExpr.ListExpression(position, List.of(),
+                            table.typeId(new Type.Named("[]", List.of(Type.ANY))));
                 }
 
                 // tente descobrir o tipo da lista.
@@ -503,6 +481,7 @@ public class Analyser {
 
                 if (elementType.equals(Type.NOTHING)) {
                     error(position, "Os elementos de uma lista devem ter tipos compatíveis.");
+                    elementType = Type.INVALID;
                 }
 
                 // lub e glb podem criar novos tipos que devem ser registrados; garantimos isso
@@ -758,9 +737,7 @@ public class Analyser {
                         || operator.type() == TokenType.HAT_EQUAL) {
 
                     // O lado esquerdo deve ser uma variável ou campo de registro (lugar atribuível)
-                    if (!(leftExpr instanceof TypedExpr.VariableExpression
-                            || leftExpr instanceof TypedExpr.RecAccess
-                            || leftExpr instanceof TypedExpr.ListAccess)) {
+                    if (!isAssignableExpression(leftExpr)) {
                         error(operator,
                                 "O lado esquerdo de uma atribuição deve ser uma variável ou um campo de registro.");
                         return new TypedExpr.BinaryExpression(leftExpr, operator, rightExpr,
@@ -874,57 +851,7 @@ public class Analyser {
                 };
             }
 
-            case Expr.FunctionCall(Expr target, List<Expr.Argument> arguments): {
-                // Analisar o alvo da chamada
-                var targetExpr = target instanceof Expr.VariableExpression varTarget ? varTarget : null;
-                if (targetExpr != null) {
-                    var targetName = targetExpr.name().lexeme();
-
-                    // Verificar se o nome é um tipo declarado no ambiente
-                    var typeEntry = environment.getType(targetName);
-                    if (typeEntry.isPresent()) {
-                        if (arguments.size() != 1) {
-                            error(targetExpr.name(), "Conversões explícitas devem ter exatamente um argumento.");
-                            return new TypedExpr.TypeConversionExpression(
-                                    table.typeId(Type.INVALID),
-                                    arguments.isEmpty() ? null : expression(arguments.get(0).value()),
-                                    table.typeId(Type.INVALID));
-                        }
-
-                        // Obter o tipo alvo
-                        var targetType = switch (typeEntry.get()) {
-                            case TypeEnvEntry.Type(Id<TypeInfo> id) -> id;
-                            default -> {
-                                error(targetExpr.name(), "Conversão explícita inválida para o tipo: " + targetName);
-                                yield table.typeId(Type.INVALID);
-                            }
-                        };
-
-                        // Analisar o valor a ser convertido
-                        var valueExpr = expression(arguments.get(0).value());
-
-                        System.out.println("Tentando conversão explícita: de "
-                                + table.typeDefinition(valueExpr.type()) + " para "
-                                + table.typeDefinition(targetType));
-
-                        // Verificar compatibilidade de tipos
-                        if (!canConvert(valueExpr.type(), targetType)) {
-                            error(targetExpr.name(), "Conversão inválida de tipo " +
-                                    table.typeDefinition(valueExpr.type()) + " para " +
-                                    table.typeDefinition(targetType) + ".");
-                            return new TypedExpr.TypeConversionExpression(
-                                    targetType, valueExpr, table.typeId(Type.INVALID));
-                        }
-
-                        System.out.println("Conversão bem-sucedida: de "
-                                + table.typeDefinition(valueExpr.type()) + " para "
-                                + table.typeDefinition(targetType));
-
-                        // Retornar a expressão de conversão explícita
-                        return new TypedExpr.TypeConversionExpression(targetType, valueExpr, targetType);
-                    }
-                }
-
+            case Expr.FunctionCall(Token parens, Expr target, List<Expr.Argument> arguments): {
                 // Caso não seja uma conversão explícita, tratar como função normal
                 var typedTarget = expression(target);
                 if (!(table.typeDefinition(typedTarget.type()) instanceof Type.Function functionType)) {
@@ -938,7 +865,7 @@ public class Analyser {
                 var expectedArgs = functionType.args();
 
                 if (arguments.size() != expectedArgs.size()) {
-                    error(targetExpr.name(), "Número incorreto de argumentos. Esperado: " + expectedArgs.size() +
+                    error(parens, "Número incorreto de argumentos. Esperado: " + expectedArgs.size() +
                             ", recebido: " + arguments.size());
                     return new TypedExpr.FunctionCall(typedTarget, List.of(), table.typeId(Type.INVALID));
                 }
@@ -1086,24 +1013,26 @@ public class Analyser {
                 return new TypedExpr.WhileExpression(conditionExpr, bodyExpr, table.typeId(Type.UNIT));
             }
 
-            case Expr.ReturnExpression(Expr value): {
+            case Expr.ReturnExpression(Token keyword, Optional<Expr> value): {
                 // Analisar o valor do retorno
-                var returnValue = expression(value);
+                var returnValue = value.map(this::expression);
+                var returnType = returnValue.map(TypedExpr::type).orElse(table.typeId(Type.UNIT));
 
                 // Obter o tipo de retorno da função atual
                 var functionType = table.typeDefinition(table.functions().get(currentFunction.get()).get().type());
-                var returnType = ((Type.Function) functionType).ret();
+                var functionReturnType = ((Type.Function) functionType).ret();
 
                 // Verificar compatibilidade dos tipos
-                if (!compatibleTypes(returnValue.type(), table.typeId(returnType))) {
-                    error(value instanceof Expr.Literal literal ? literal.value() : null,
-                            "O tipo do valor retornado não é compatível com o tipo de retorno da função. Retorno esperado => "
-                                    + functionType + "\nRetorno Recebido => " + returnValue.type());
+                if (!compatibleTypes(returnType, table.typeId(functionReturnType))) {
+                    error(keyword,
+                            "O tipo do valor retornado não é compatível com o tipo de retorno da função. Retorno esperado: "
+                                    + functionReturnType + ", retorno recebido: "
+                                    + table.typeDefinition(returnType));
                     return new TypedExpr.ReturnExpression(returnValue, table.typeId(Type.INVALID));
                 }
 
                 // Retornar a expressão de retorno tipada
-                return new TypedExpr.ReturnExpression(returnValue, returnValue.type());
+                return new TypedExpr.ReturnExpression(returnValue, returnType);
             }
 
             case Expr.DebugExpression(Expr value): {
@@ -1118,22 +1047,16 @@ public class Analyser {
                 var typedVariables = new ArrayList<TypedExpr>();
 
                 for (var variable : variables) {
-                    if (!(variable instanceof Expr.VariableExpression varExpr)) {
+                    var typedVariable = expression(variable);
+
+                    if (!isAssignableExpression(typedVariable)) {
                         error(variable instanceof Expr.Literal literal ? literal.value() : null,
                                 "Somente variáveis podem ser usadas na expressão 'read'.");
 
                         return new TypedExpr.ReadExpression(List.of(), table.typeId(Type.INVALID));
                     }
 
-                    var local = environment.get(varExpr.name().lexeme());
-                    if (local.isEmpty() || !(local.get() instanceof EnvEntry.Local localEntry)) {
-                        error(varExpr.name(), "A variável '" + varExpr.name().lexeme() + "' não foi declarada.");
-
-                        return new TypedExpr.ReadExpression(List.of(), table.typeId(Type.INVALID));
-                    }
-
-                    typedVariables.add(new TypedExpr.VariableExpression(varExpr.name(),
-                            table.locals().get(((EnvEntry.Local) local.get()).localId()).get().type()));
+                    typedVariables.add(typedVariable);
                 }
 
                 return new TypedExpr.ReadExpression(typedVariables, table.typeId(Type.UNIT));
@@ -1142,6 +1065,12 @@ public class Analyser {
             case Expr.Block block:
                 return block(block);
         }
+    }
+
+    private boolean isAssignableExpression(TypedExpr leftExpr) {
+        return leftExpr instanceof TypedExpr.VariableExpression
+                || leftExpr instanceof TypedExpr.RecAccess
+                || leftExpr instanceof TypedExpr.ListAccess;
     }
 
     private Id<TypeInfo> typeAst(TypeAst typeAst) {
@@ -1183,7 +1112,7 @@ public class Analyser {
     }
 
     private void error(Token token, String message) {
-        FilePosition position = token != null ? token.where() : new FilePosition(0, 0, "Início do arquivo");
+        FilePosition position = token != null ? token.where() : new FilePosition(1, 1, "???");
         errors.add(new CompilerError(ErrorType.SEMANTIC, message, position));
     }
 
