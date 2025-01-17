@@ -102,6 +102,7 @@ public class AstPrinter {
         return builder.toString();
     }
 
+    @SuppressWarnings("unused")
     private String parens(Object... rest) {
         var builder = new StringBuilder();
         builder.append("(");
