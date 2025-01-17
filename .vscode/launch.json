@@ -24,7 +24,7 @@
             "request": "launch",
             "mainClass": "popsi.Popsi", // Substitua pela sua classe principal
             "projectName": "popsi_3ecd87dd",
-            "args": ["test/tipo.psi"]
+            "args": ["test/usoDeEstrutura.psi"]
         }
     ]
 }

@@ -1,3 +1,6 @@
 fn main() {
-    let x: u8 = 1000;
+    let x: str = "OI";
+    let 🎭: str = "";
+    x[0] = 'Ó';
+    debug(x[0]);
 }

@@ -1,6 +1,7 @@
 package popsi.analysis;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 
@@ -79,7 +80,8 @@ public class Analyser {
                 Type.U8, Type.U16, Type.U32, Type.U64,
                 Type.I8, Type.I16, Type.I32, Type.I64,
                 Type.F32, Type.F64)) {
-            var constructorType = new Type.Function(List.of(Type.NUMERIC), type);
+            var constructorType = new Type.Function(List.of(Type.NUMERIC), type,
+                    List.of("value"));
             var constructorTypeId = table.typeId(constructorType);
             var constructorInfo = new FunctionInfo(type.name(), constructorTypeId);
             environment.put(type.name(), new EnvEntry.Function(table.functions().insert(constructorInfo)));
@@ -122,6 +124,7 @@ public class Analyser {
             case TypedStmt.Declaration decl:
                 return table.locals().get(decl.local()).get().type();
         }
+
     }
 
     private TypedExpr.Block block(Expr.Block block) {
@@ -184,7 +187,7 @@ public class Analyser {
         // Registrar o tipo da função na tabela de símbolos
         var functionType = new Type.Function(
                 parameters.stream().map(x -> table.typeDefinition(x.type())).toList(),
-                table.typeDefinition(returnType));
+                table.typeDefinition(returnType), function.parameters().stream().map(p -> p.name().lexeme()).toList());
         table.types().insert(functionTypeId, new TypeInfo(functionType));
 
         return functionInfoId;
@@ -278,7 +281,7 @@ public class Analyser {
         // registra construtores
         var constructorType = new Type.Function(
                 parameters.stream().map(p -> table.typeDefinition(p.type())).toList(),
-                table.typeDefinition(recTypeId));
+                table.typeDefinition(recTypeId), parameters.stream().map(p -> p.name().lexeme()).toList());
 
         var constructorTypeId = table.typeId(constructorType);
         var constructorInfo = new FunctionInfo(rec.name().lexeme(), constructorTypeId);
@@ -349,6 +352,7 @@ public class Analyser {
                 return new TypedStmt.ExpressionStatement(typedExpr, typedExpr.type());
             }
         }
+
     }
 
     // private boolean canConvert(Id<TypeInfo> from, Id<TypeInfo> to) {
@@ -509,6 +513,7 @@ public class Analyser {
                         return new TypedExpr.VariableExpression(name, table.functions().get(function).get().type());
                     }
                 }
+
             }
 
             // 3.1. O tipo de uma lista é o tipo dos elementos que ela contém.
@@ -911,31 +916,113 @@ public class Analyser {
                 // Caso não seja uma conversão explícita, tratar como função normal
                 var typedTarget = expression(target);
                 if (!(table.typeDefinition(typedTarget.type()) instanceof Type.Function functionType)) {
-                    error(expr,
-                            "O alvo da chamada não é uma função.");
+                    error(expr, "O alvo da chamada não é uma função.");
                     return new TypedExpr.FunctionCall(typedTarget, List.of(), table.typeId(Type.INVALID));
                 }
 
-                // Analisar argumentos e verificar compatibilidade
-                var typedArguments = new ArrayList<TypedExpr.Argument>();
                 var expectedArgs = functionType.args();
+                var functiontype = (Type.Function) table.typeDefinition(typedTarget.type());
+                var expectedArgNames = functiontype.names();
 
-                if (arguments.size() != expectedArgs.size()) {
-                    error(expr, "Número incorreto de argumentos. Esperado: " + expectedArgs.size() +
-                            ", recebido: " + arguments.size());
-                    return new TypedExpr.FunctionCall(typedTarget, List.of(), table.typeId(Type.INVALID));
+                var typedArguments = new ArrayList<TypedExpr.Argument>();
+                var seenLabels = new HashSet<String>();
+                var usedPositions = new HashSet<Integer>();
+                boolean hasLabeledArgument = arguments.stream().anyMatch(arg -> arg.label().isPresent());
+
+                if (hasLabeledArgument) {
+                    // Validação de argumentos com e sem rótulos
+                    for (int i = 0; i < arguments.size(); i++) {
+                        var arg = arguments.get(i);
+
+                        if (arg.label().isPresent()) {
+                            var label = arg.label().get().lexeme();
+
+                            // Garantir que o rótulo seja válido
+                            if (!expectedArgNames.contains(label)) {
+                                error(arg.label().get(), "Argumento com rótulo desconhecido: " + label);
+                                return new TypedExpr.FunctionCall(typedTarget, List.of(),
+                                        table.typeId(functionType.ret()));
+                            }
+
+                            // Garantir que o argumento com rótulo não foi duplicado
+                            if (seenLabels.contains(label)) {
+                                error(arg.label().get(),
+                                        "O argumento com rótulo '" + label + "' foi passado mais de uma vez.");
+                                return new TypedExpr.FunctionCall(typedTarget, List.of(),
+                                        table.typeId(functionType.ret()));
+                            }
+
+                            seenLabels.add(label);
+                            var expectedIndex = expectedArgNames.indexOf(label);
+                            var expectedType = expectedArgs.get(expectedIndex);
+
+                            var typedValue = expression(arg.value());
+                            if (!compatibleTypes(typedValue.type(), table.typeId(expectedType))) {
+                                error(arg.value(), "Tipo incompatível para o argumento '" + label + "'. Esperado: "
+                                        + expectedType + ", recebido: " + table.typeDefinition(typedValue.type()));
+                            }
+
+                            typedArguments.add(new TypedExpr.Argument(arg.label(), typedValue, typedValue.type()));
+                            usedPositions.add(expectedIndex);
+                        } else {
+                            // Argumentos sem rótulo
+                            if (!usedPositions.isEmpty()) {
+                                error(arg.value(),
+                                        "Argumentos sem rótulo devem aparecer antes de argumentos com rótulo.");
+                                return new TypedExpr.FunctionCall(typedTarget, List.of(),
+                                        table.typeId(functionType.ret()));
+                            }
+
+                            // Encontrar a próxima posição livre
+                            var freeIndex = 0;
+                            while (usedPositions.contains(freeIndex) && freeIndex < expectedArgs.size()) {
+                                freeIndex++;
+                            }
+
+                            if (freeIndex >= expectedArgs.size()) {
+                                error(arg.value(),
+                                        "Número incorreto de argumentos. Argumento extra encontrado.");
+                                return new TypedExpr.FunctionCall(typedTarget, List.of(),
+                                        table.typeId(functionType.ret()));
+                            }
+
+                            var expectedType = expectedArgs.get(freeIndex);
+                            var typedValue = expression(arg.value());
+                            if (!compatibleTypes(typedValue.type(), table.typeId(expectedType))) {
+                                error(arg.value(),
+                                        "Tipo incompatível para o argumento na posição " + freeIndex + ". Esperado: "
+                                                + expectedType + ", recebido: "
+                                                + table.typeDefinition(typedValue.type()));
+                            }
+
+                            typedArguments.add(new TypedExpr.Argument(Optional.empty(), typedValue, typedValue.type()));
+                            usedPositions.add(freeIndex);
+                        }
+                    }
+                } else {
+                    // Sem argumentos com rótulos, processar normalmente
+                    if (arguments.size() != expectedArgs.size()) {
+                        error(expr, "Número incorreto de argumentos. Esperado: " + expectedArgs.size() +
+                                ", recebido: " + arguments.size());
+                        return new TypedExpr.FunctionCall(typedTarget, List.of(), table.typeId(functionType.ret()));
+                    }
+
+                    for (int i = 0; i < arguments.size(); i++) {
+                        var arg = arguments.get(i);
+                        var expectedType = expectedArgs.get(i);
+                        var typedValue = expression(arg.value());
+                        if (!compatibleTypes(typedValue.type(), table.typeId(expectedType))) {
+                            error(arg, "Tipo incompatível para o argumento " + (i + 1) + ". Esperado: " + expectedType +
+                                    ", recebido: " + table.typeDefinition(typedValue.type()));
+                        }
+                        typedArguments.add(new TypedExpr.Argument(Optional.empty(), typedValue, typedValue.type()));
+                    }
                 }
 
-                for (int i = 0; i < arguments.size(); i++) {
-                    var arg = arguments.get(i);
-                    var expectedType = expectedArgs.get(i);
-                    var typedValue = expression(arg.value());
-                    if (!compatibleTypes(typedValue.type(), table.typeId(expectedType))) {
-                        error(arg,
-                                "Tipo incompatível para o argumento " + (i + 1) + ". Esperado: " + expectedType +
-                                        ", recebido: " + table.typeDefinition(typedValue.type()));
-                    }
-                    typedArguments.add(new TypedExpr.Argument(arg.label(), typedValue, typedValue.type()));
+                // Garantir que todos os argumentos esperados foram preenchidos
+                if (typedArguments.size() != expectedArgs.size()) {
+                    error(expr, "Nem todos os argumentos esperados foram fornecidos.");
+                    return new TypedExpr.FunctionCall(typedTarget, List.of(), table.typeId(functionType.ret()));
                 }
 
                 // O tipo da chamada é o tipo de retorno da função
@@ -950,23 +1037,38 @@ public class Analyser {
             case Expr.ListAccess(Expr target, Expr place): {
                 // Analisar a lista (alvo)
                 var targetExpr = expression(target);
-                if (!(table.typeDefinition(targetExpr.type()) instanceof Type.Named listType)
-                        || !listType.name().equals("[]")) {
-                    error(target,
-                            "O alvo do acesso deve ser uma lista.");
-                    return new TypedExpr.ListAccess(targetExpr, expression(place), table.typeId(Type.INVALID));
+                var placeExpr = expression(place);
+                var targetType = table.typeDefinition(targetExpr.type());
+
+                if (targetType.equals(Type.STR)) {
+                    // Analisar o índice
+                    if (!compatibleTypes(placeExpr.type(), table.typeId(Type.I_LITERAL))) {
+                        error(place,
+                                "O índice de acesso deve ser um número inteiro.");
+                        return new TypedExpr.ListAccess(targetExpr, placeExpr, table.typeId(Type.INVALID));
+                    }
+
+                    return new TypedExpr.ListAccess(targetExpr, placeExpr, table.typeId(Type.CHAR));
+
                 }
 
-                // Analisar o índice
-                var placeExpr = expression(place);
-                if (!compatibleTypes(placeExpr.type(), table.typeId(Type.I_LITERAL))) {
-                    error(place,
-                            "O índice de acesso deve ser um número inteiro.");
+                else if (targetType instanceof Type.Named listType && listType.name().equals("[]")) {
+                    // Analisar o índice
+                    if (!compatibleTypes(placeExpr.type(), table.typeId(Type.I_LITERAL))) {
+                        error(place,
+                                "O índice de acesso deve ser um número inteiro.");
+                        return new TypedExpr.ListAccess(targetExpr, placeExpr, table.typeId(Type.INVALID));
+                    }
+
+                    // Retornar o tipo dos elementos da lista
+                    return new TypedExpr.ListAccess(targetExpr, placeExpr, table.typeId(listType.args().get(0)));
+
+                } else {
+                    error(target,
+                            "O alvo do acesso deve ser uma lista.");
                     return new TypedExpr.ListAccess(targetExpr, placeExpr, table.typeId(Type.INVALID));
                 }
 
-                // Retornar o tipo dos elementos da lista
-                return new TypedExpr.ListAccess(targetExpr, placeExpr, table.typeId(listType.args().get(0)));
             }
 
             case Expr.RecAccess(Expr target, Token place): {
@@ -1121,6 +1223,7 @@ public class Analyser {
             case Expr.Block block:
                 return block(block);
         }
+
     }
 
     private boolean isAssignableExpression(TypedExpr leftExpr) {
@@ -1143,6 +1246,7 @@ public class Analyser {
                         case TypeEnvEntry.Record(Id<RecordInfo> recordId):
                             return table.records().get(recordId).get().type();
                     }
+
                 }
             }
             case TypeAst.List(TypeAst elementType): {
@@ -1151,6 +1255,7 @@ public class Analyser {
                 return table.typeId(listType);
             }
         }
+
     }
 
     private boolean compatibleTypes(Id<TypeInfo> type1, Id<TypeInfo> type2) {
