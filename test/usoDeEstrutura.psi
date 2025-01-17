@@ -5,8 +5,8 @@ rec Pessoa {
 }
 
 fn main() {
-    let pessoa1: Pessoa = Pessoa(nome: "Pedro", cpf: i64(12345612345), idade: i32(10));
-    pessoa1.idade = 19;
+    let pessoa1: Pessoa = Pessoa("Pedro", i32(12345612345), i64(10));
+    read(43);
 
 
     debug pessoa1.nome;

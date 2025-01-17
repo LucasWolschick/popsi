@@ -29,11 +29,13 @@ public sealed interface Type {
         }
     }
 
-    public static record Function(List<Type> args, Type ret) implements Type {
+    public static record Function(List<Type> args, Type ret, List<String> names) implements Type {
         @Override
         public String toString() {
             var sb = new StringBuilder("fn(");
             for (int i = 0; i < args.size(); i++) {
+                sb.append(names.get(i));
+                sb.append(": ");
                 sb.append(args.get(i).toString());
                 if (i != args.size() - 1) {
                     sb.append(", ");
