@@ -903,11 +903,34 @@ public class Analyser {
             case Expr.UnaryExpression(Token operator, Expr operand): {
                 var operandExpr = expression(operand);
                 return switch (operator.type()) {
-                    case TokenType.BANG ->
-                        new TypedExpr.UnaryExpression(operator, operandExpr, table.typeId(Type.BOOLEAN));
-                    case TokenType.MINUS -> new TypedExpr.UnaryExpression(operator, operandExpr, operandExpr.type());
-                    case TokenType.HASH ->
-                        new TypedExpr.UnaryExpression(operator, operandExpr, table.typeId(Type.I_LITERAL));
+                    case TokenType.BANG -> {
+                        // deve ser booleano
+                        if (!compatibleTypes(operandExpr.type(), table.typeId(Type.BOOLEAN))) {
+                            error(operator, "Operador '!' requer um operando booleano.");
+                            yield new TypedExpr.UnaryExpression(operator, operandExpr, table.typeId(Type.INVALID));
+                        }
+                        yield new TypedExpr.UnaryExpression(operator, operandExpr, table.typeId(Type.BOOLEAN));
+                    }
+                    case TokenType.MINUS -> {
+                        // deve ser numérico
+                        if (!isNumericType(operandExpr.type())) {
+                            error(operator, "Operador '-' requer um operando numérico.");
+                            yield new TypedExpr.UnaryExpression(operator, operandExpr, table.typeId(Type.INVALID));
+                        }
+                        yield new TypedExpr.UnaryExpression(operator, operandExpr, operandExpr.type());
+                    }
+                    case TokenType.HASH -> {
+                        // deve ser lista ou string
+                        var operandType = table.typeDefinition(operandExpr.type());
+                        if (operandType.equals(Type.STR)) {
+                            yield new TypedExpr.UnaryExpression(operator, operandExpr, table.typeId(Type.I32));
+                        } else if (operandType instanceof Type.Named named && named.name() == "[]") {
+                            yield new TypedExpr.UnaryExpression(operator, operandExpr, table.typeId(Type.I32));
+                        } else {
+                            error(operator, "Operador '#' requer um operando do tipo 'str' ou lista.");
+                            yield new TypedExpr.UnaryExpression(operator, operandExpr, table.typeId(Type.INVALID));
+                        }
+                    }
                     default -> throw new RuntimeException("Operação unária não suportada: " + operator.type());
                 };
             }
@@ -1049,10 +1072,7 @@ public class Analyser {
                     }
 
                     return new TypedExpr.ListAccess(targetExpr, placeExpr, table.typeId(Type.CHAR));
-
-                }
-
-                else if (targetType instanceof Type.Named listType && listType.name().equals("[]")) {
+                } else if (targetType instanceof Type.Named listType && listType.name().equals("[]")) {
                     // Analisar o índice
                     if (!compatibleTypes(placeExpr.type(), table.typeId(Type.I_LITERAL))) {
                         error(place,
@@ -1062,10 +1082,9 @@ public class Analyser {
 
                     // Retornar o tipo dos elementos da lista
                     return new TypedExpr.ListAccess(targetExpr, placeExpr, table.typeId(listType.args().get(0)));
-
                 } else {
                     error(target,
-                            "O alvo do acesso deve ser uma lista.");
+                            "O alvo do acesso deve ser uma lista. Recebido: " + targetType);
                     return new TypedExpr.ListAccess(targetExpr, placeExpr, table.typeId(Type.INVALID));
                 }
 

@@ -5,11 +5,14 @@ rec Pessoa {
 }
 
 fn main() {
-    let pessoa1: Pessoa = Pessoa("Pedro", i32(12345612345), i64(10));
-    read(43);
-
+    let pessoa1: Pessoa = Pessoa(nome: "Pedro", cpf: i64(12345612345), idade: 10);
 
     debug pessoa1.nome;
     debug pessoa1.idade;
     debug pessoa1.cpf;
+
+    let pessoas: [Pessoa] = [pessoa1];
+    pessoas[0].idade = 2;
+    read(pessoas[0].nome);
+    pessoas[0].nome[0] = 'M';
 }
